@@ -1,4 +1,4 @@
-name: Ubuntu VPS (Ngrok Web Terminal 100% Sạch Lỗi)
+name: Ubuntu VPS (Ngrok Web Terminal Nền Đen Fix Lỗi Bàn Phím)
 
 on:
   workflow_dispatch:
@@ -12,33 +12,32 @@ jobs:
         echo "runner:123456" | sudo chpasswd
         sudo systemctl start ssh
 
-    - name: Cài đặt Ngrok và Web Terminal từ APT
+    - name: Cài đặt Ngrok và Web Terminal TTYD
       run: |
         echo "🚀 Đang cài đặt Ngrok..."
         curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
         echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-        sudo apt-get update
-        
-        # Cài đặt ngrok, jq và shellinabox chính thức từ hệ thống
-        sudo apt-get install ngrok jq shellinabox -y > /dev/null
+        sudo apt-get update && sudo apt-get install ngrok jq -y > /dev/null
         
         # 🟢 ĐIỀN CHÍNH XÁC AUTHTOKEN NGROK CỦA ÔNG VÀO ĐÂY
         ngrok config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
 
-    - name: Khởi chạy dịch vụ và xuất link
+        echo "🚀 Tải ttyd bản chuẩn fix lỗi Enter di động..."
+        sudo curl -sL https://github.com/tsl0922/ttyd/releases/download/1.7.3/ttyd.x86_64 -o /usr/local/bin/ttyd
+        sudo chmod +x /usr/local/bin/ttyd
+
+    - name: Khởi chạy và xuất link
       run: |
-        echo "🚀 Khởi động dịch vụ Web Terminal nội bộ..."
-        # Cấu hình shellinabox chạy ở cổng 8080, tắt SSL để tương thích với ngrok http
-        sudo shellinaboxd -p 8080 --disable-ssl -b
+        echo "🚀 Khởi động ttyd nền đen mượt mà..."
+        # Chạy ttyd yêu cầu đăng nhập tài khoản runner / 123456
+        ttyd -p 8080 -c runner:123456 login &
         
         sleep 2
         echo "🚀 Mở đường hầm Ngrok HTTP..."
-        # Chạy ngrok dạng HTTP trỏ vào cổng 8080 (Không cần add thẻ ngân hàng)
         ngrok http 8080 --log=stdout > ngrok.log &
         
         sleep 5
         
-        # Lấy link public từ API nội bộ
         NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
         
         if [ "$NGROK_URL" != "null" ] && [ ! -z "$NGROK_URL" ]; then
@@ -46,18 +45,17 @@ jobs:
           echo "========================================="
           echo "   🎉 VPS NGROK WEB ĐÃ SẴN SÀNG 🎉       "
           echo "========================================="
-          echo "🔗 Link truy cập của ông:"
+          echo "🔗 Link truy cập (Giao diện đen mượt):"
           echo "👉 $NGROK_URL"
           echo "========================================="
-          echo "👤 Tài khoản đăng nhập trên Chrome:"
+          echo "👤 Tài khoản đăng nhập:"
           echo "📍 Username: runner"
           echo "📍 Password: 123456"
           echo "========================================="
           echo ""
         else
-          echo "❌ Lỗi không khởi tạo được link. Chi tiết log:"
+          echo "❌ Lỗi không khởi tạo được link."
           cat ngrok.log
         fi
 
-        # Giữ VPS sống 6 tiếng
         sleep 21600
