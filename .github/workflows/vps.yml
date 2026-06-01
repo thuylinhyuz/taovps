@@ -1,4 +1,4 @@
-name: Windows RDP Cloudflare
+name: Windows RDP Ngrok
 
 on:
   workflow_dispatch:
@@ -9,33 +9,56 @@ jobs:
     timeout-minutes: 360
 
     steps:
+      - name: Download ngrok
+        shell: powershell
+        run: |
+          Invoke-WebRequest "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile ngrok.zip
+          Expand-Archive ngrok.zip -DestinationPath ngrok -Force
+          .\ngrok\ngrok.exe version
+
+      - name: Auth ngrok
+        shell: powershell
+        env:
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        run: |
+          .\ngrok\ngrok.exe config add-authtoken $env:NGROK_AUTH_TOKEN
+          .\ngrok\ngrok.exe config check
+
       - name: Enable RDP
         shell: powershell
         run: |
-          net user runneradmin "P@ssw0rd123"
+          net user runneradmin "@cyb3rking"
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1
 
-      - name: Download Cloudflared
+      - name: Create RDP Tunnel
         shell: powershell
         run: |
-          Invoke-WebRequest "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile cloudflared.exe
+          Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389 --log=stdout --log-level=info" -RedirectStandardOutput ngrok.log -RedirectStandardError ngrok.err
 
-      - name: Start Tunnel
-        shell: powershell
-        env:
-          CF_TUNNEL_TOKEN: ${{ secrets.CF_TUNNEL_TOKEN }}
-        run: |
-          Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel run --token $env:CF_TUNNEL_TOKEN"
-          Start-Sleep -Seconds 20
+          Start-Sleep -Seconds 25
 
-          Write-Host "==============================="
+          Write-Host "=== NGROK PROCESS ==="
+          Get-Process ngrok -ErrorAction SilentlyContinue
+
+          Write-Host "=== NGROK LOG ==="
+          Get-Content ngrok.log -ErrorAction SilentlyContinue
+
+          Write-Host "=== NGROK ERR ==="
+          Get-Content ngrok.err -ErrorAction SilentlyContinue
+
+          $tunnels = Invoke-RestMethod "http://127.0.0.1:4040/api/tunnels"
+          $publicUrl = $tunnels.tunnels[0].public_url
+
+          $addr = $publicUrl -replace "tcp://",""
+
+          Write-Host "======================================"
           Write-Host "RDP READY"
-          Write-Host "Cloudflare host: rdp.ducyuz.com"
-          Write-Host "Windows user: runneradmin"
-          Write-Host "Windows pass: P@ssw0rd123"
-          Write-Host "==============================="
+          Write-Host "Computer: $addr"
+          Write-Host "User: runneradmin"
+          Write-Host "Password: @cyb3rking"
+          Write-Host "======================================"
 
       - name: Keep Alive
         shell: powershell
