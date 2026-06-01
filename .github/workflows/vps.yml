@@ -1,4 +1,4 @@
-name: Windows VPS (Ngrok TCP - Bản Fix Dứt Điểm Tải File)
+name: Windows VPS (Ngrok TCP - Choco Auto Install)
 
 on:
   workflow_dispatch:
@@ -12,26 +12,23 @@ jobs:
         # Đổi mật khẩu tài khoản mặc định runneradmin
         net user runneradmin "DucYuz@#2010$!"
         
-        # Mở tính năng Remote Desktop (RDP) trên hệ thống
+        # Mở tính năng Remote Desktop (RDP)
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
-    - name: Tải và Khởi chạy Ngrok x64 Chuẩn
+    - name: Cài đặt Ngrok tự động qua Chocolatey
       run: |
-        Write-Host "🚀 Đang tải Ngrok chính thức bản x64 qua PowerShell..."
-        Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQcaYp/ngrok-v3-stable-windows-amd64.zip" -OutFile "ngrok.zip"
-        
-        Write-Host "🚀 Tiến hành giải nén file ZIP..."
-        Expand-Archive -Path "ngrok.zip" -DestinationPath "." -Force
+        Write-Host "🚀 Đang cài đặt Ngrok chính thức qua Choco (Bao sập link)..."
+        choco install ngrok -y
         
         Write-Host "🚀 Cấu hình Token Ngrok..."
-        # 🟢 ÔNG ĐIỀN CHÍNH XÁC AUTHTOKEN NGROK CỦA ÔNG VÀO ĐÂY NHA
-        ./ngrok.exe config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
+        # 🟢 ÔNG ĐIỀN CHÍNH XÁC AUTHTOKEN NGROK CỦA ÔNG VÀO ĐÂY
+        ngrok config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
         
         Write-Host "🚀 Đang mở đường hầm TCP cho cổng RDP 3389..."
-        Start-Process ./ngrok.exe -ArgumentList "tcp 3389" -RedirectStandardOutput "ngrok.log"
+        Start-Process ngrok -ArgumentList "tcp 3389" -RedirectStandardOutput "ngrok.log"
         
-        Write-Host "🚀 Đợi 12 giây để hệ thống ổn định và lấy kết nối..."
+        Write-Host "🚀 Đợi 12 giây để hệ thống phân giải link..."
         Start-Sleep -s 12
         
         Write-Host "🚀 Trích xuất thông tin kết nối từ API..."
@@ -51,7 +48,7 @@ jobs:
             Write-Output ""
             Write-Output "👉 Copy toàn bộ dòng Địa chỉ vứt vào app Remote Desktop!"
         } else {
-            Write-Output "❌ Không lấy được link. Nội dung log Ngrok:"
+            Write-Output "❌ Không khởi tạo được hầm Ngrok. Nội dung log:"
             Get-Content ngrok.log
         }
 
