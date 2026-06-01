@@ -14,14 +14,30 @@ jobs:
         
     - name: Khởi chạy tmate lấy thông tin SSH
       run: |
-        # Chạy tmate ngầm
+        # Khởi chạy session mới ngầm
         tmate -S /tmp/tmate.sock new-session -d
-        tmate -S /tmp/tmate.sock wait tmate
         
+        # Vòng lặp chờ tmate kết nối đến server để lấy link (tối đa 30 giây)
+        echo "Đang kết nối đến hệ thống tmate để lấy thông tin kết nối..."
+        SSH_CMD=""
+        for i in {1..15}; do
+          sleep 2
+          SSH_CMD=$(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}' 2>/dev/null)
+          if [[ "$SSH_CMD" == "ssh "* ]]; then
+            break
+          fi
+          echo "Đang đợi tmate cấp mã kết nối... ($((i*2))s)"
+        done
+
+        echo ""
         echo "=== THÔNG TIN ĐỂ ĐIỀN VÀO TERMIUS ==="
-        # Lệnh này để lấy chuỗi SSH đầy đủ nhằm tách Host và Port
-        tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}'
+        if [ -z "$SSH_CMD" ]; then
+          echo "LỖI: Không lấy được thông tin từ tmate. Vui lòng chạy lại workflow!"
+        else
+          echo "$SSH_CMD"
+        fi
         echo "====================================="
+        echo ""
         
-        # Treo VPS 5 tiếng rưỡi
+        # Treo VPS 5 tiếng rưỡi để giữ phiên hoạt động
         sleep 19800
