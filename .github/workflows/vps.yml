@@ -1,4 +1,4 @@
-name: Ubuntu VPS (Cloudflare Tunnel Bất Tử)
+name: Ubuntu VPS (Dùng Ngrok Vào Thẳng Termius)
 
 on:
   workflow_dispatch:
@@ -7,33 +7,50 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Khởi động SSH Service & Đổi mật khẩu
+    - name: Cài đặt SSH và cấu hình tài khoản
       run: |
-        # Đặt mật khẩu đăng nhập SSH cho tài khoản runner
         echo "runner:123456" | sudo chpasswd
         sudo systemctl start ssh
 
-    - name: Cài đặt và kích hoạt Cloudflare Tunnel
-      env:
-        CF_TOKEN: "eyJhIjoiNGZhYzJjNzIxYTY5ZDRlMjdhYWU0ZjQ3YTliY2RmMDAiLCJ0IjoiZWJiMWUzMTctMGFmZS00ZTYxLTk2NWUtYzAxYWFkNmEyNDJlIiwicyI6Ik9UVXlZMkl3WTJRdE1XTXhPQzAwWkRsbExXRTJNREl0T0dGbFlqYzFZVGhsTmpjeiJ9"
+    - name: Chạy Ngrok xuất link trực tiếp
       run: |
-        # Tải bản cloudflared chính thức dành cho Linux AMD64
-        curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
-        chmod +x /usr/local/bin/cloudflared
+        # Tải và cài đặt Ngrok chính chủ
+        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/authroized_keys.d/ngrok.asc >/dev/null
+        echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+        sudo apt-get update && sudo apt-get install ngrok -y
         
-        echo "Đang kích hoạt đường hầm Cloudflare..."
-        # Khởi chạy tunnel ngầm và bắt tay với Cloudflare
-        cloudflared tunnel --no-autoupdate run --token $CF_TOKEN > /dev/null 2>&1 &
+        # Điền Authtoken Ngrok của ông vào đây
+        ngrok config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f" 
+
+        echo "🚀 Đang khởi động đường hầm TCP..."
+        # Chạy ngrok ngầm trỏ vào cổng SSH (TCP 22)
+        ngrok tcp 22 --log=stdout > ngrok.log &
         
-        echo ""
-        echo "========================================="
-        echo "   👉 CLOUDFLARE TUNNEL ĐÃ LÊN SÓNG 👈   "
-        echo "========================================="
-        echo "User SSH: runner"
-        echo "Pass SSH: 123456"
-        echo "Trạng thái: Đang kết nối ngầm về Cloudflare..."
-        echo "========================================="
-        echo ""
+        # Đợi 5 giây cho ngrok khởi tạo xong rồi bốc tách link
+        sleep 5
         
-        # Treo VPS 5 tiếng rưỡi để chạy tool
+        # Quét file log để tìm địa chỉ IP và Port công khai
+        NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+        
+        if [ "$NGROK_URL" != "null" ] && [ ! -z "$NGROK_URL" ]; then
+          # Tách chuỗi tcp://0.tcp.ap.ngrok.io:12345 thành Host và Port
+          HOST=$(echo $NGROK_URL | sed 's/tcp:\/\///' | cut -d':' -f1)
+          PORT=$(echo $NGROK_URL | cut -d':' -f2)
+          
+          echo ""
+          echo "========================================="
+          echo "   🎉 VPS NGROK ĐÃ SẴN SÀNG KẾT NỐI 🎉   "
+          echo "========================================="
+          echo "📍 Hostname: $HOST"
+          echo "📍 Port: $PORT"
+          echo "👤 Username: runner"
+          echo "🔑 Password: 123456"
+          echo "========================================="
+          echo ""
+        else
+          echo "❌ Lỗi: Không lấy được link kết nối ngrok. Kiểm tra lại Authtoken nhé!"
+          cat ngrok.log
+        fi
+
+        # Treo VPS 5 tiếng rưỡi
         sleep 19800
