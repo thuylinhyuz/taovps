@@ -1,4 +1,4 @@
-name: Windows VPS (Cloudflare Tunnel - Dùng User Mặc Định)
+name: Windows VPS (Ngrok TCP - Vào Thẳng RD Client)
 
 on:
   workflow_dispatch:
@@ -7,49 +7,54 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-    - name: Cấu hình mật khẩu và kích hoạt Remote Desktop
+    - name: Cấu hình tài khoản và kích hoạt Remote Desktop
       run: |
-        # Đổi mật khẩu của chính tài khoản mặc định runneradmin bằng PowerShell siêu cấp
+        # Đổi mật khẩu của tài khoản mặc định runneradmin sang mật khẩu hợp lệ
         $Password = ConvertTo-SecureString "DucYuz@#2010$!" -AsPlainText -Force
         Set-LocalUser -Name "runneradmin" -Password $Password
         
-        # Mở tính năng Remote Desktop (RDP) trên hệ thống
+        # Mở tính năng Remote Desktop (RDP)
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
-    - name: Tải và Khởi chạy Cloudflare Tunnel
+    - name: Tải và Khởi chạy Ngrok TCP
       run: |
-        echo "🚀 Đang tải Cloudflare Độc Lập cho Windows..."
-        curl -L --output cloudflared.exe https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
+        echo "🚀 Đang tải Ngrok chính thức cho Windows..."
+        curl -L --output ngrok.zip https://bin.equinox.io/c/bNyj1mQcaYp/ngrok-v3-stable-windows-amd64.zip
+        Expand-Archive -Path ngrok.zip -DestinationPath .
         
-        echo "🚀 Đang mở đường hầm RDP công khai..."
-        Start-Process ./cloudflared.exe -ArgumentList "tunnel --url rdp://localhost:3389" -RedirectStandardOutput "cloudflare.log"
+        echo "🚀 Cấu hình Token Ngrok..."
+        # 🟢 ÔNG ĐIỀN CHÍNH XÁC AUTHTOKEN NGROK CỦA ÔNG VÀO ĐÂY
+        ./ngrok.exe config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
         
-        # Đợi 12 giây để lấy link kết nối
-        Start-Sleep -s 12
+        echo "🚀 Đang mở đường hầm TCP cho RDP (Cổng 3389)..."
+        # Chạy Ngrok ngầm trỏ vào cổng RDP 3389
+        Start-Process ./ngrok.exe -ArgumentList "tcp 3389" -RedirectStandardOutput "ngrok.log"
         
-        # Trích xuất link public trycloudflare
-        $log = Get-Content cloudflare.log
-        $line = $log | Select-String -Pattern "https://[a-zA-Z0-9-]+\.trycloudflare\.com" | Select-Object -First 1
+        # Đợi 8 giây để hệ thống ổn định và lấy link kết nối
+        Start-Sleep -s 8
         
-        if ($line) {
-            $url = [regex]::match($line, "https://[a-zA-Z0-9-]+\.trycloudflare\.com").Value
-            $host_clean = $url -replace "https://", ""
+        # Lấy thông tin cổng kết nối từ API nội bộ của Ngrok
+        $ngrok_api = curl -s http://127.0.0.1:4040/api/tunnels | ConvertFrom-Json
+        $public_url = $ngrok_api.tunnels[0].public_url
+        
+        if ($public_url) {
+            # Loại bỏ chữ "tcp://" ở đầu để lấy Host và Port sạch
+            $clean_url = $public_url -replace "tcp://", ""
             
             Write-Output ""
             Write-Output "========================================="
-            Write-Output "   🎉 VPS WINDOWS ĐÃ SẴN SÀNG 🎉         "
+            Write-Output "   🎉 VPS WINDOWS NGROK ĐÃ SẴN SÀNG 🎉   "
             Write-Output "========================================="
-            Write-Output "📍 Hostname RDP: $host_clean"
-            Write-Output "📍 Port: 3389"
+            Write-Output "📍 Địa chỉ điền vào PC Name: $clean_url"
             Write-Output "👤 Username: runneradmin"
             Write-Output "🔑 Password: DucYuz@#2010$!"
             Write-Output "========================================="
             Write-Output ""
-            Write-Output "👉 Copy Hostname đuôi .trycloudflare.com vứt vào app Remote Desktop!"
+            Write-Output "👉 Copy toàn bộ dòng Địa chỉ (gồm cả đuôi số đằng sau dấu hai chấm) vứt vào RD Client!"
         } else {
-            Write-Output "❌ Không lấy được link. Nội dung log:"
-            Get-Content cloudflare.log
+            Write-Output "❌ Không khởi tạo được hầm Ngrok TCP. Nội dung log:"
+            Get-Content ngrok.log
         }
 
     - name: Treo VPS giữ kết nối sống 6 tiếng
