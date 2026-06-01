@@ -1,0 +1,72 @@
+name: Ubuntu VPS (Domain Riêng - No Card)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Cài đặt Cloudflare Tunnel
+      run: |
+        curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+        sudo dpkg -i cloudflared.deb
+
+    - name: Đổi mật khẩu SSH & Khởi động SSH Service
+      run: |
+        echo "runner:123456" | sudo chpasswd
+        sudo systemctl start ssh
+
+    - name: Khởi chạy Tunnel ẩn danh & Tự động trỏ Domain
+      env:
+        CF_EMAIL: ${{ secrets.CF_EMAIL }}
+        CF_KEY: ${{ secrets.CF_KEY }}
+        CF_DOMAIN: ${{ secrets.CF_DOMAIN }}
+      run: |
+        # 1. Chạy tunnel ẩn danh và xuất log ra file
+        cloudflared tunnel --url ssh://localhost:22 > tunnel.log 2>&1 &
+        sleep 8
+        
+        # 2. Lấy link *.trycloudflare.com từ log
+        TUNNEL_URL=$(cat tunnel.log | grep -oE "https://[a-zA-Z0-9-]+.trycloudflare.com" | head -n 1 | sed 's/https:\/\///')
+        echo "Tunnel URL kết nối: $TUNNEL_URL"
+        
+        if [ -z "$TUNNEL_URL" ]; then
+          echo "Không lấy được Tunnel URL, kiểm tra lại log:"
+          cat tunnel.log
+          exit 1
+        fi
+
+        # 3. Gọi API Cloudflare để tìm Zone ID của Domain
+        ZONE_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$CF_DOMAIN" \
+          -H "X-Auth-Email: $CF_EMAIL" \
+          -H "X-Auth-Key: $CF_KEY" \
+          -H "Content-Type: application/json" | jq -r '.result[0].id')
+
+        # 4. Tìm xem đã có bản ghi CNAME 'vps' chưa để cập nhật hoặc tạo mới
+        RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?type=CNAME&name=vps.$CF_DOMAIN" \
+          -H "X-Auth-Email: $CF_EMAIL" \
+          -H "X-Auth-Key: $CF_KEY" \
+          -H "Content-Type: application/json" | jq -r '.result[0].id')
+
+        if [ "$RECORD_ID" != "null" ] && [ ! -z "$RECORD_ID" ]; then
+          # Cập nhật bản ghi cũ
+          curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$RECORD_ID" \
+            -H "X-Auth-Email: $CF_EMAIL" \
+            -H "X-Auth-Key: $CF_KEY" \
+            -H "Content-Type: application/json" \
+            --data "{\"type\":\"CNAME\",\"name\":\"vps\",\"content\":\"$TUNNEL_URL\",\"ttl\":1,\"proxied\":false}" > /dev/null
+        else
+          # Tạo bản ghi mới
+          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
+            -H "X-Auth-Email: $CF_EMAIL" \
+            -H "X-Auth-Key: $CF_KEY" \
+            -H "Content-Type: application/json" \
+            --data "{\"type\":\"CNAME\",\"name\":\"vps\",\"content\":\"$TUNNEL_URL\",\"ttl\":1,\"proxied\":false}" > /dev/null
+        fi
+
+        echo "=== CẤU HÌNH THÀNH CÔNG ==="
+        echo "Subdomain vps.$CF_DOMAIN đang trỏ về VPS GitHub!"
+        
+        # Giữ VPS chạy 5.5 tiếng
+        sleep 19800
