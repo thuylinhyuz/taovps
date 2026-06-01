@@ -20,7 +20,7 @@ jobs:
         sudo apt-get update && sudo apt-get install ngrok -y
         
         # Nhớ thay đoạn token dưới đây bằng Authtoken Ngrok thật của ông nhé
-        ngrok config add-authtoken "2hVp..." 
+        ngrok config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f" 
 
         echo "🚀 Đang khởi động đường hầm TCP..."
         # Khởi động ngrok ngầm trỏ vào cổng SSH (TCP 22)
