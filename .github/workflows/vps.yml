@@ -14,7 +14,7 @@ jobs:
 
     - name: Cài đặt và chạy Ngrok
       env:
-        NGROK_TOKEN: "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
+        NGROK_TOKEN: "3EWGelpGikywlO0PvPEqh4TpogP_4JSWaXJ3E4W2CquyQuroR"
       run: |
         curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
         echo "deb [signed-by=/etc/apt/trusted.gpg.d/ngrok.asc] https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
