@@ -1,4 +1,4 @@
-name: Windows VPS (Cloudflare Tunnel - Khóa Bất Tử)
+name: Windows VPS (Cloudflare Tunnel - Bản Fix Sạch Lỗi User)
 
 on:
   workflow_dispatch:
@@ -9,8 +9,11 @@ jobs:
     steps:
     - name: Cấu hình mật khẩu và kích hoạt Remote Desktop
       run: |
-        # Đổi mật khẩu tài khoản administrator mặc định thành: DucYuz123456
-        net user administrator DucYuz123456 /active:yes
+        # Tạo hẳn một user mới tên là DucYuz với mật khẩu cực mạnh
+        net user DucYuz "DucYuz123456" /add
+        
+        # Đưa user DucYuz vào nhóm Administrators (Quyền tối cao)
+        net localgroup Administrators DucYuz /add
         
         # Mở tính năng Remote Desktop (RDP) trên Windows Server
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
@@ -25,8 +28,8 @@ jobs:
         # Chạy Cloudflare ngầm trỏ vào cổng RDP 3389 của Windows
         Start-Process ./cloudflared.exe -ArgumentList "tunnel --url rdp://localhost:3389" -RedirectStandardOutput "cloudflare.log"
         
-        # Đợi 10 giây để Cloudflare lấy link
-        Start-Sleep -s 10
+        # Đợi 12 giây để Cloudflare thiết lập kết nối ổn định và lấy link
+        Start-Sleep -s 12
         
         # Đọc file log để xuất link kết nối ra màn hình
         $log = Get-Content cloudflare.log
@@ -42,7 +45,7 @@ jobs:
             Write-Output "========================================="
             Write-Output "📍 Hostname RDP: $host_clean"
             Write-Output "📍 Port: 3389"
-            Write-Output "👤 Username: administrator"
+            Write-Output "👤 Username: DucYuz"
             Write-Output "🔑 Password: DucYuz123456"
             Write-Output "========================================="
             Write-Output ""
