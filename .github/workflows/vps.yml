@@ -1,4 +1,4 @@
-name: Ubuntu VPS (Vào thẳng bằng Termius)
+name: Ubuntu VPS (Fix Mọi Lỗi Termius)
 
 on: 
   workflow_dispatch:
@@ -7,17 +7,23 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Cài đặt tmate
+    - name: Cài đặt tmate & Cấu hình ép hạ chuẩn SSH mã hóa
       run: |
         sudo apt-get update
         sudo apt-get install -y tmate
+        
+        # Tạo file cấu hình SSH trên VPS để chấp nhận các thuật toán mã hóa cũ của Termius Mobile
+        sudo mkdir -p /etc/ssh/sshd_config.d/
+        echo "KexAlgorithms +diffie-hellman-group1-sha1,diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha1,diffie-hellman-group-exchange-sha256" | sudo tee -a /etc/ssh/sshd_config
+        echo "HostKeyAlgorithms +ssh-rsa,ssh-dss" | sudo tee -a /etc/ssh/sshd_config
+        echo "PubkeyAcceptedKeyTypes +ssh-rsa" | sudo tee -a /etc/ssh/sshd_config
         
     - name: Khởi chạy tmate lấy thông tin SSH
       run: |
         # Khởi chạy session mới ngầm
         tmate -S /tmp/tmate.sock new-session -d
         
-        # Vòng lặp chờ tmate kết nối đến server để lấy link (tối đa 30 giây)
+        # Vòng lặp chờ tmate kết nối đến server để lấy link
         echo "Đang kết nối đến hệ thống tmate để lấy thông tin kết nối..."
         SSH_CMD=""
         for i in {1..15}; do
