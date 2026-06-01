@@ -1,61 +1,57 @@
-name: Ubuntu VPS (Ngrok Web Terminal Nền Đen Fix Lỗi Bàn Phím)
+name: Windows VPS (Cloudflare Tunnel - Khóa Bất Tử)
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
-    - name: Cài đặt SSH và cấu hình tài khoản
+    - name: Cấu hình mật khẩu và kích hoạt Remote Desktop
       run: |
-        echo "runner:123456" | sudo chpasswd
-        sudo systemctl start ssh
-
-    - name: Cài đặt Ngrok và Web Terminal TTYD
+        # Đổi mật khẩu tài khoản administrator mặc định thành: DucYuz123456
+        net user administrator DucYuz123456 /active:yes
+        
+        # Mở tính năng Remote Desktop (RDP) trên Windows Server
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        
+    - name: Tải và Khởi chạy Cloudflare Tunnel
       run: |
-        echo "🚀 Đang cài đặt Ngrok..."
-        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-        echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-        sudo apt-get update && sudo apt-get install ngrok jq -y > /dev/null
+        echo "🚀 Đang tải Cloudflare Độc Lập cho Windows..."
+        curl -L --output cloudflared.exe https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
         
-        # 🟢 ĐIỀN CHÍNH XÁC AUTHTOKEN NGROK CỦA ÔNG VÀO ĐÂY
-        ngrok config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
+        echo "🚀 Đang mở đường hầm RDP công khai..."
+        # Chạy Cloudflare ngầm trỏ vào cổng RDP 3389 của Windows
+        Start-Process ./cloudflared.exe -ArgumentList "tunnel --url rdp://localhost:3389" -RedirectStandardOutput "cloudflare.log"
+        
+        # Đợi 10 giây để Cloudflare lấy link
+        Start-Sleep -s 10
+        
+        # Đọc file log để xuất link kết nối ra màn hình
+        $log = Get-Content cloudflare.log
+        $line = $log | Select-String -Pattern "https://[a-zA-Z0-9-]+\.trycloudflare\.com" | Select-Object -First 1
+        
+        if ($line) {
+            $url = [regex]::match($line, "https://[a-zA-Z0-9-]+\.trycloudflare\.com").Value
+            $host_clean = $url -replace "https://", ""
+            
+            Write-Output ""
+            Write-Output "========================================="
+            Write-Output "   🎉 VPS WINDOWS ĐÃ SẴN SÀNG 🎉         "
+            Write-Output "========================================="
+            Write-Output "📍 Hostname RDP: $host_clean"
+            Write-Output "📍 Port: 3389"
+            Write-Output "👤 Username: administrator"
+            Write-Output "🔑 Password: DucYuz123456"
+            Write-Output "========================================="
+            Write-Output ""
+            Write-Output "👉 Copy đúng cái Hostname đuôi .trycloudflare.com vứt vào app Remote Desktop!"
+        } else {
+            Write-Output "❌ Không lấy được link. Nội dung log:"
+            Get-Content cloudflare.log
+        }
 
-        echo "🚀 Tải ttyd bản chuẩn fix lỗi Enter di động..."
-        sudo curl -sL https://github.com/tsl0922/ttyd/releases/download/1.7.3/ttyd.x86_64 -o /usr/local/bin/ttyd
-        sudo chmod +x /usr/local/bin/ttyd
-
-    - name: Khởi chạy và xuất link
+    - name: Treo VPS giữ kết nối sống 6 tiếng
       run: |
-        echo "🚀 Khởi động ttyd nền đen mượt mà..."
-        # Chạy ttyd yêu cầu đăng nhập tài khoản runner / 123456
-        ttyd -p 8080 -c runner:123456 login &
-        
-        sleep 2
-        echo "🚀 Mở đường hầm Ngrok HTTP..."
-        ngrok http 8080 --log=stdout > ngrok.log &
-        
-        sleep 5
-        
-        NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
-        
-        if [ "$NGROK_URL" != "null" ] && [ ! -z "$NGROK_URL" ]; then
-          echo ""
-          echo "========================================="
-          echo "   🎉 VPS NGROK WEB ĐÃ SẴN SÀNG 🎉       "
-          echo "========================================="
-          echo "🔗 Link truy cập (Giao diện đen mượt):"
-          echo "👉 $NGROK_URL"
-          echo "========================================="
-          echo "👤 Tài khoản đăng nhập:"
-          echo "📍 Username: runner"
-          echo "📍 Password: 123456"
-          echo "========================================="
-          echo ""
-        else
-          echo "❌ Lỗi không khởi tạo được link."
-          cat ngrok.log
-        fi
-
-        sleep 21600
+        Start-Sleep -s 21600
