@@ -1,4 +1,4 @@
-name: Windows VPS (Localtonet TCP - Không Cần Thẻ)
+name: Windows VPS (Localtonet TCP - Bản Fix Link)
 
 on:
   workflow_dispatch:
@@ -9,27 +9,22 @@ jobs:
     steps:
     - name: Kích hoạt Remote Desktop và Đổi Mật Khẩu
       run: |
-        # Đổi mật khẩu tài khoản mặc định runneradmin
         net user runneradmin "DucYuz@#2010$!"
-        
-        # Mở tính năng Remote Desktop (RDP) trên Windows Server
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
     - name: Tải và Khởi chạy Localtonet x64
       run: |
-        Write-Host "🚀 Đang tải Localtonet chính thức bản x64..."
-        Invoke-WebRequest -Uri "https://localtonet.com/download/localtonet-windows-x64.zip" -OutFile "localtonet.zip"
-        
-        Write-Host "🚀 Giải nén bộ cài..."
+        Invoke-WebRequest -Uri "https://github.com/localtonet/localtonet/releases/download/v2.1.2/localtonet-windows-x64.zip" -OutFile "localtonet.zip"
         Expand-Archive -Path "localtonet.zip" -DestinationPath "." -Force
         
-        Write-Host "🚀 Khởi chạy hầm RDP công khai..."
-        # 🟢 ÔNG ĐIỀN CHÍNH XÁC AUTH_TOKEN LOCALTONET CỦA ÔNG VÀO CHỖ "xxxx" DƯỚI ĐÂY NHA:
-        Start-Process ./localtonet.exe -ArgumentList "authtoken OzX6UWcSDwAHMJdeYbjfTVl2t9ro71Bh0" -WindowStyle Hidden
+        # Token chuẩn 100% lấy từ ảnh Screenshot_2026-06-01-14-39-55-163_com.android.chrome.jpg
+        ./localtonet.exe authtoken OzX6UWcSDwAHMJdeYbjfTV12t9ro71Bh0
         
-        Write-Host "🚀 Đợi 10 giây để hệ thống thiết lập đường truyền..."
-        Start-Sleep -s 10
+        # Mở tunnel TCP cổng 3389
+        Start-Process ./localtonet.exe -ArgumentList "tcp 3389" -WindowStyle Hidden
+        
+        Write-Host "🚀 Đã khởi chạy xong. Kiểm tra Tunnel trên trang localtonet.com để lấy địa chỉ!"
 
     - name: Treo VPS giữ kết nối sống 6 tiếng
       run: |
