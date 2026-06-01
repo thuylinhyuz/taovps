@@ -1,4 +1,4 @@
-name: Ubuntu VPS (Ngrok Web Terminal Free Không Thẻ)
+name: Ubuntu VPS (Ngrok Web Terminal 100% Sạch Lỗi)
 
 on:
   workflow_dispatch:
@@ -12,35 +12,33 @@ jobs:
         echo "runner:123456" | sudo chpasswd
         sudo systemctl start ssh
 
-    - name: Cài đặt Ngrok chuẩn chính thức
+    - name: Cài đặt Ngrok và Web Terminal từ APT
       run: |
         echo "🚀 Đang cài đặt Ngrok..."
         curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
         echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-        sudo apt-get update && sudo apt-get install ngrok -y
+        sudo apt-get update
         
-        # 🟢 ĐIỀN API TOKEN NGROK CỦA ÔNG VÀO ĐÂY
+        # Cài đặt ngrok, jq và shellinabox chính thức từ hệ thống
+        sudo apt-get install ngrok jq shellinabox -y > /dev/null
+        
+        # 🟢 ĐIỀN CHÍNH XÁC AUTHTOKEN NGROK CỦA ÔNG VÀO ĐÂY
         ngrok config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
 
-    - name: Kích hoạt Web Terminal và Ngrok
+    - name: Khởi chạy dịch vụ và xuất link
       run: |
-        echo "🚀 Đang cấu hình giao diện Web Terminal..."
-        # Tải công cụ gotty để chuyển SSH thành giao diện Web
-        curl -sL https://github.com/yudai/gotty/releases/download/v2.0.0-alpha.3/gotty_linux_amd64.tar.gz | tar -xz
-        sudo mv gotty /usr/local/bin/
-        
-        # Chạy gotty ngầm ở cổng 8080, bắt đăng nhập bằng user/pass của VPS
-        gotty -w -p 8080 --credential runner:123456 login &
+        echo "🚀 Khởi động dịch vụ Web Terminal nội bộ..."
+        # Cấu hình shellinabox chạy ở cổng 8080, tắt SSL để tương thích với ngrok http
+        sudo shellinaboxd -p 8080 --disable-ssl -b
         
         sleep 2
-        echo "🚀 Đang mở đường hầm Ngrok HTTP..."
-        # Chạy ngrok dạng HTTP trỏ vào cổng 8080 (Không bị bắt add thẻ)
+        echo "🚀 Mở đường hầm Ngrok HTTP..."
+        # Chạy ngrok dạng HTTP trỏ vào cổng 8080 (Không cần add thẻ ngân hàng)
         ngrok http 8080 --log=stdout > ngrok.log &
         
         sleep 5
-        sudo apt-get install jq -y > /dev/null
         
-        # Tự động lấy link ngrok công khai được cấp
+        # Lấy link public từ API nội bộ
         NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
         
         if [ "$NGROK_URL" != "null" ] && [ ! -z "$NGROK_URL" ]; then
@@ -48,16 +46,16 @@ jobs:
           echo "========================================="
           echo "   🎉 VPS NGROK WEB ĐÃ SẴN SÀNG 🎉       "
           echo "========================================="
-          echo "🔗 Link vào VPS của ông đây:"
+          echo "🔗 Link truy cập của ông:"
           echo "👉 $NGROK_URL"
           echo "========================================="
-          echo "👤 Tài khoản đăng nhập trên Web:"
+          echo "👤 Tài khoản đăng nhập trên Chrome:"
           echo "📍 Username: runner"
           echo "📍 Password: 123456"
           echo "========================================="
           echo ""
         else
-          echo "❌ Lỗi không lấy được link. Kiểm tra log:"
+          echo "❌ Lỗi không khởi tạo được link. Chi tiết log:"
           cat ngrok.log
         fi
 
