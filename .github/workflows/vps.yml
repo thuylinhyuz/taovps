@@ -13,9 +13,9 @@ jobs:
         shell: powershell
         run: |
           net user runneradmin "P@ssw0rd123"
-          net localgroup Administrators runneradmin /add
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1
 
       - name: Download Cloudflared
         shell: powershell
@@ -27,19 +27,19 @@ jobs:
         env:
           CF_TUNNEL_TOKEN: ${{ secrets.CF_TUNNEL_TOKEN }}
         run: |
-          Start-Process .\cloudflared.exe -ArgumentList "tunnel run --token $env:CF_TUNNEL_TOKEN"
-          Start-Sleep 20
+          Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel run --token $env:CF_TUNNEL_TOKEN"
+          Start-Sleep -Seconds 20
 
-          Write-Host "======================="
+          Write-Host "==============================="
           Write-Host "RDP READY"
-          Write-Host "HOST: rdp.ducyuz.com"
-          Write-Host "USER: runneradmin"
-          Write-Host "PASS: P@ssw0rd123"
-          Write-Host "======================="
+          Write-Host "Cloudflare host: rdp.ducyuz.com"
+          Write-Host "Windows user: runneradmin"
+          Write-Host "Windows pass: P@ssw0rd123"
+          Write-Host "==============================="
 
       - name: Keep Alive
         shell: powershell
         run: |
           while ($true) {
-            Start-Sleep 60
+            Start-Sleep -Seconds 60
           }
