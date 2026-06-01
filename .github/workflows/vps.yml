@@ -14,26 +14,26 @@ jobs:
 
     - name: Chạy Ngrok xuất link trực tiếp
       run: |
-        # Tải và cài đặt Ngrok chính chủ
-        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/authroized_keys.d/ngrok.asc >/dev/null
+        # Sửa lại đường dẫn cài đặt chuẩn của Ngrok
+        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.dev/ngrok.asc >/dev/null
         echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
         sudo apt-get update && sudo apt-get install ngrok -y
         
-        # Điền Authtoken Ngrok của ông vào đây
-        ngrok config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f" 
+        # Nhớ thay đoạn token dưới đây bằng Authtoken Ngrok thật của ông nhé
+        ngrok config add-authtoken "2hVp..." 
 
         echo "🚀 Đang khởi động đường hầm TCP..."
-        # Chạy ngrok ngầm trỏ vào cổng SSH (TCP 22)
+        # Khởi động ngrok ngầm trỏ vào cổng SSH (TCP 22)
         ngrok tcp 22 --log=stdout > ngrok.log &
         
-        # Đợi 5 giây cho ngrok khởi tạo xong rồi bốc tách link
+        # Đợi 5 giây cho ngrok ổn định kết nối
         sleep 5
         
-        # Quét file log để tìm địa chỉ IP và Port công khai
+        # Trích xuất địa chỉ public URL từ API nội bộ của Ngrok
         NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
         
         if [ "$NGROK_URL" != "null" ] && [ ! -z "$NGROK_URL" ]; then
-          # Tách chuỗi tcp://0.tcp.ap.ngrok.io:12345 thành Host và Port
+          # Bóc tách chuỗi tcp://0.tcp.ap.ngrok.io:12345 thành Hostname và Port riêng biệt
           HOST=$(echo $NGROK_URL | sed 's/tcp:\/\///' | cut -d':' -f1)
           PORT=$(echo $NGROK_URL | cut -d':' -f2)
           
@@ -52,5 +52,5 @@ jobs:
           cat ngrok.log
         fi
 
-        # Treo VPS 5 tiếng rưỡi
-        sleep 19800
+        # Giữ VPS sống trong 6 tiếng để chạy tool
+        sleep 21600
