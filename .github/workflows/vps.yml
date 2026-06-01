@@ -1,4 +1,4 @@
-name: Ubuntu VPS (Dùng Serveo Vào Thẳng Termius)
+name: Ubuntu VPS (Ngrok Web Terminal Free Không Thẻ)
 
 on:
   workflow_dispatch:
@@ -12,42 +12,54 @@ jobs:
         echo "runner:123456" | sudo chpasswd
         sudo systemctl start ssh
 
-    - name: Khởi động đường hầm Serveo lấy link Termius
+    - name: Cài đặt Ngrok chuẩn chính thức
       run: |
-        echo "🚀 Đang kết nối đường hầm qua Serveo..."
+        echo "🚀 Đang cài đặt Ngrok..."
+        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+        echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+        sudo apt-get update && sudo apt-get install ngrok -y
         
-        # Chạy ngầm lệnh ssh của serveo kết nối cổng 22 ra ngoài công khai
-        ssh -o StrictHostKeyChecking=no -R 80:localhost:22 serveo.net > serveo.log 2>&1 &
+        # 🟢 ĐIỀN API TOKEN NGROK CỦA ÔNG VÀO ĐÂY
+        ngrok config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
+
+    - name: Kích hoạt Web Terminal và Ngrok
+      run: |
+        echo "🚀 Đang cấu hình giao diện Web Terminal..."
+        # Tải công cụ gotty để chuyển SSH thành giao diện Web
+        curl -sL https://github.com/yudai/gotty/releases/download/v2.0.0-alpha.3/gotty_linux_amd64.tar.gz | tar -xz
+        sudo mv gotty /usr/local/bin/
         
-        # Đợi 5 giây cho hệ thống cấp link
+        # Chạy gotty ngầm ở cổng 8080, bắt đăng nhập bằng user/pass của VPS
+        gotty -w -p 8080 --credential runner:123456 login &
+        
+        sleep 2
+        echo "🚀 Đang mở đường hầm Ngrok HTTP..."
+        # Chạy ngrok dạng HTTP trỏ vào cổng 8080 (Không bị bắt add thẻ)
+        ngrok http 8080 --log=stdout > ngrok.log &
+        
         sleep 5
+        sudo apt-get install jq -y > /dev/null
         
-        # Quét log lấy link
-        SERVEO_LINK=$(grep -oE 'forwarded from .+' serveo.log | head -n 1)
+        # Tự động lấy link ngrok công khai được cấp
+        NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
         
-        if [ ! -z "$SERVEO_LINK" ]; then
-          # Trích xuất Port được cấp ngẫu nhiên từ Serveo
-          PORT=$(echo $SERVEO_LINK | grep -oE '[0-9]+$')
-          
+        if [ "$NGROK_URL" != "null" ] && [ ! -z "$NGROK_URL" ]; then
           echo ""
           echo "========================================="
-          echo "   🎉 VPS SERVEO ĐÃ SẴN SÀNG KẾT NỐI 🎉   "
+          echo "   🎉 VPS NGROK WEB ĐÃ SẴN SÀNG 🎉       "
           echo "========================================="
-          echo "📍 Hostname: serveo.net"
-          echo "📍 Port: $PORT"
-          echo "👤 Username: runner"
-          echo "🔑 Password: 123456"
+          echo "🔗 Link vào VPS của ông đây:"
+          echo "👉 $NGROK_URL"
+          echo "========================================="
+          echo "👤 Tài khoản đăng nhập trên Web:"
+          echo "📍 Username: runner"
+          echo "📍 Password: 123456"
           echo "========================================="
           echo ""
-          echo "👉 Ông copy đúng Hostname (serveo.net) và Port ở trên điền vào Termius!"
         else
-          echo "❌ Lỗi kết nối Serveo. Thử lại luồng dự phòng 2..."
-          # Luồng dự phòng dùng mã hóa riêng biệt
-          ssh -o StrictHostKeyChecking=no -R vps:80:localhost:22 serveo.net > serveo_backup.log 2>&1 &
-          sleep 5
-          cat serveo.log
-          cat serveo_backup.log
+          echo "❌ Lỗi không lấy được link. Kiểm tra log:"
+          cat ngrok.log
         fi
 
-        # Giữ VPS sống trong 6 tiếng để chạy tool
+        # Giữ VPS sống 6 tiếng
         sleep 21600
