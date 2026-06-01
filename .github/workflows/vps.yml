@@ -1,4 +1,4 @@
-name: Windows VPS (Localtonet TCP - Bản Fix Link)
+name: Windows VPS (Serveo TCP - Khong Can Tai App)
 
 on:
   workflow_dispatch:
@@ -9,22 +9,35 @@ jobs:
     steps:
     - name: Kích hoạt Remote Desktop và Đổi Mật Khẩu
       run: |
+        # Đổi mật khẩu tài khoản mặc định runneradmin
         net user runneradmin "DucYuz@#2010$!"
+        
+        # Mở tính năng Remote Desktop (RDP) trên Windows Server
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
-    - name: Tải và Khởi chạy Localtonet x64
+    - name: Khởi tạo đường hầm Serveo TCP qua SSH
+      shell: cmd
       run: |
-        Invoke-WebRequest -Uri "https://github.com/localtonet/localtonet/releases/download/v2.1.2/localtonet-windows-x64.zip" -OutFile "localtonet.zip"
-        Expand-Archive -Path "localtonet.zip" -DestinationPath "." -Force
+        echo 🚀 Dang thiet lap duong ham Serveo TCP (Khong can tai file)...
         
-        # Token chuẩn 100% lấy từ ảnh Screenshot_2026-06-01-14-39-55-163_com.android.chrome.jpg
-        ./localtonet.exe authtoken OzX6UWcSDwAHMJdeYbjfTV12t9ro71Bh0
+        :: Chạy SSH nền để forward cổng RDP 3389 ra máy chủ công khai serveo.net
+        :: Tự động chấp nhận key (StrictHostKeyChecking=no) để không bị kẹt khi chạy ngầm
+        start /b ssh -o StrictHostKeyChecking=no -R 0:localhost:3389 serveo.net > serveo.log 2>&1
         
-        # Mở tunnel TCP cổng 3389
-        Start-Process ./localtonet.exe -ArgumentList "tcp 3389" -WindowStyle Hidden
+        echo 🚀 Doi 12 giay de he thong nhan địa chỉ công khai...
+        ping 127.0.0.1 -n 12 > nul
         
-        Write-Host "🚀 Đã khởi chạy xong. Kiểm tra Tunnel trên trang localtonet.com để lấy địa chỉ!"
+        echo 🚀 Trich xuat thong tin ket noi tu Log...
+        type serveo.log
+        
+        echo =========================================
+        echo    🎉 VPS WINDOWS SERVEO DA SAN SANG 🎉   
+        echo =========================================
+        echo 👤 Username: runneradmin
+        echo 🔑 Password: DucYuz@#2010$!
+        echo =========================================
+        echo 👉 Đọc dòng chữ "Forwarding TCP connection từ..." trong log bên trên để lấy Port!
 
     - name: Treo VPS giữ kết nối sống 6 tiếng
       run: |
