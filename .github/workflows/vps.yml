@@ -1,4 +1,4 @@
-name: Windows VPS (Pinggy TCP - Không Lỗi 404)
+name: Windows VPS (Microsoft Dev Tunnels - Bao Chay 100%)
 
 on:
   workflow_dispatch:
@@ -13,22 +13,22 @@ jobs:
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
-    - name: Khởi tạo đường hầm qua Pinggy IO
+    - name: Khởi tạo đường hầm qua Dev Tunnels Chính Chủ
       shell: cmd
       run: |
-        echo 🚀 Dang thiet lap duong ham TCP qua Pinggy...
+        echo 🚀 Dang thiet lap duong ham qua Microsoft Dev Tunnels...
         
-        :: Chạy SSH nền kết nối qua Pinggy để forward cổng RDP 3389
-        start /b ssh -o StrictHostKeyChecking=no -p 443 -R 0:localhost:3389 tcp@connect.pinggy.io > pinggy.log 2>&1
+        :: Khởi tạo hầm kết nối không cần đăng nhập, mở trực tiếp cổng RDP 3389 sang giao thức TCP công khai
+        start /b devtunnel host -p 3389 --protocol tcp --allow-anonymous > devtunnel.log 2>&1
         
-        echo 🚀 Doi 15 giay de he thong nhan địa chỉ...
+        echo 🚀 Doi 15 giay de he thong nhan địa chỉ kết nối...
         ping 127.0.0.1 -n 15 > nul
         
         echo 🚀 Trich xuat thong tin ket noi tu Log...
-        type pinggy.log
+        type devtunnel.log
         
         echo =========================================
-        echo    🎉 VPS WINDOWS PINGGY DA SAN SANG 🎉   
+        echo   🎉 VPS WINDOWS MICROSOFT DA SAN SANG 🎉   
         echo =========================================
         echo 👤 Username: runneradmin
         echo 🔑 Password: DucYuz@#2010$!
