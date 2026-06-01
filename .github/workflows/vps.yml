@@ -1,4 +1,4 @@
-name: Windows RDP (Cloudflare Stable)
+name: Windows-RDP
 
 on:
   workflow_dispatch:
@@ -6,30 +6,29 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 360
+
     steps:
-    - name: Setup RDP
-      run: |
-        net user runneradmin "DucYuz@#2010$!"
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        
-    - name: Start Tunnel
-      shell: powershell
-      run: |
-        Write-Host "Installing Cloudflare Tunnel..."
-        choco install cloudflared -y
-        
-        Write-Host "Starting tunnel..."
-        # Mở hầm TCP đến cổng 3389
-        start cloudflared tunnel --url tcp://localhost:3389
-        
-        Write-Host "Waiting..."
-        Start-Sleep -s 15
-        
-        Write-Host "========================================="
-        Write-Host "   RDP READY"
-        Write-Host "========================================="
-        Write-Host "User: runneradmin"
-        Write-Host "Pass: DucYuz@#2010$!"
-        Write-Host "Check your Cloudflare Dashboard for the tunnel address"
-        Write-Host "========================================="
+      - name: Download Cloudflared
+        shell: powershell
+        run: |
+          Invoke-WebRequest https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe -OutFile cloudflared.exe
+
+      - name: Enable RDP
+        shell: powershell
+        run: |
+          net user runneradmin P@ssw0rd123
+          net localgroup administrators runneradmin /add
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+      - name: Start Tunnel
+        shell: powershell
+        run: |
+          Start-Process .\cloudflared.exe -ArgumentList "tunnel --url tcp://localhost:3389"
+          timeout /t 30
+
+      - name: Keep Alive
+        shell: powershell
+        run: |
+          ping -t 127.0.0.1
