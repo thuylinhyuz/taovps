@@ -1,4 +1,4 @@
-name: Windows VPS (Ngrok TCP - Vào Thẳng RD Client)
+name: Windows VPS (Ngrok TCP - Bản Khóa Lỗi Giải Nén)
 
 on:
   workflow_dispatch:
@@ -7,56 +7,43 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-    - name: Cấu hình tài khoản và kích hoạt Remote Desktop
+    - name: Kích hoạt Remote Desktop và Đổi Mật Khẩu
       run: |
-        # Đổi mật khẩu của tài khoản mặc định runneradmin sang mật khẩu hợp lệ
-        $Password = ConvertTo-SecureString "DucYuz@#2010$!" -AsPlainText -Force
-        Set-LocalUser -Name "runneradmin" -Password $Password
+        # Đổi mật khẩu tài khoản mặc định runneradmin bằng lệnh net user thuần cho mượt
+        net user runneradmin "DucYuz@#2010$!"
         
-        # Mở tính năng Remote Desktop (RDP)
+        # Mở tính năng Remote Desktop (RDP) trên hệ thống
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
     - name: Tải và Khởi chạy Ngrok TCP
+      shell: cmd
       run: |
-        echo "🚀 Đang tải Ngrok chính thức cho Windows..."
-        curl -L --output ngrok.zip https://bin.equinox.io/c/bNyj1mQcaYp/ngrok-v3-stable-windows-amd64.zip
-        Expand-Archive -Path ngrok.zip -DestinationPath .
+        echo 🚀 Dang tai truc tiep file ngrok.exe...
+        curl -L --output ngrok.exe https://github.com/v2rayVLESSTunnel/Ngrok-Exe-Storage/releases/download/v3/ngrok.exe
         
-        echo "🚀 Cấu hình Token Ngrok..."
-        # 🟢 ÔNG ĐIỀN CHÍNH XÁC AUTHTOKEN NGROK CỦA ÔNG VÀO ĐÂY
-        ./ngrok.exe config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
+        echo 🚀 Cau hinh Token Ngrok...
+        :: 🟢 ÔNG NHỚ ĐIỀN CHÍNH XÁC AUTHTOKEN NGROK CỦA ÔNG VÀO ĐÂY NHA
+        ngrok.exe config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
         
-        echo "🚀 Đang mở đường hầm TCP cho RDP (Cổng 3389)..."
-        # Chạy Ngrok ngầm trỏ vào cổng RDP 3389
-        Start-Process ./ngrok.exe -ArgumentList "tcp 3389" -RedirectStandardOutput "ngrok.log"
+        echo 🚀 Dang mo duong ham TCP cho RDP (Cong 3389)...
+        start /b ngrok.exe tcp 3389
         
-        # Đợi 8 giây để hệ thống ổn định và lấy link kết nối
-        Start-Sleep -s 8
+        echo 🚀 Doi 10 giay de he thong lay link...
+        timeout /t 10 /nobreak > nul
         
-        # Lấy thông tin cổng kết nối từ API nội bộ của Ngrok
-        $ngrok_api = curl -s http://127.0.0.1:4040/api/tunnels | ConvertFrom-Json
-        $public_url = $ngrok_api.tunnels[0].public_url
+        echo 🚀 Trich xuat dia chi ket noi tu API...
+        curl -s http://127.0.0.1:4040/api/tunnels > tunnels.json
         
-        if ($public_url) {
-            # Loại bỏ chữ "tcp://" ở đầu để lấy Host và Port sạch
-            $clean_url = $public_url -replace "tcp://", ""
-            
-            Write-Output ""
-            Write-Output "========================================="
-            Write-Output "   🎉 VPS WINDOWS NGROK ĐÃ SẴN SÀNG 🎉   "
-            Write-Output "========================================="
-            Write-Output "📍 Địa chỉ điền vào PC Name: $clean_url"
-            Write-Output "👤 Username: runneradmin"
-            Write-Output "🔑 Password: DucYuz@#2010$!"
-            Write-Output "========================================="
-            Write-Output ""
-            Write-Output "👉 Copy toàn bộ dòng Địa chỉ (gồm cả đuôi số đằng sau dấu hai chấm) vứt vào RD Client!"
-        } else {
-            Write-Output "❌ Không khởi tạo được hầm Ngrok TCP. Nội dung log:"
-            Get-Content ngrok.log
-        }
+        echo =========================================
+        echo    🎉 VPS WINDOWS NGROK DA SAN SANG 🎉   
+        echo =========================================
+        powershell -Command "$json = Get-Content tunnels.json | ConvertFrom-Json; $url = $json.tunnels[0].public_url -replace 'tcp://', ''; Write-Output '📍 Dia chi dien vao PC Name: '"
+        powershell -Command "$json = Get-Content tunnels.json | ConvertFrom-Json; $url = $json.tunnels[0].public_url -replace 'tcp://', ''; Write-Output $url"
+        echo 👤 Username: runneradmin
+        echo 🔑 Password: DucYuz@#2010$!
+        echo =========================================
 
-    - name: Treo VPS giữ kết nối sống 6 tiếng
+    - name: Treo VPS giu ket noi song 6 tieng
       run: |
         Start-Sleep -s 21600
