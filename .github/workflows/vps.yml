@@ -26,12 +26,14 @@ jobs:
       - name: Enable RDP
         shell: powershell
         run: |
-          net user vanducdev "Vanducdev@2002" /add
+          net user vanducdev "DucLe@Server2026!" /add
+          net user vanducdev "DucLe@Server2026!"
+          net user vanducdev /active:yes
 
           net localgroup Administrators vanducdev /add
+          net localgroup "Remote Desktop Users" vanducdev /add
 
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
-
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 0
 
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
@@ -39,6 +41,9 @@ jobs:
           sc.exe config TermService start= auto
           net stop TermService /y
           net start TermService
+
+          Write-Host "=== CHECK USER ==="
+          net user vanducdev
 
           Write-Host "=== CHECK RDP SERVICE ==="
           Get-Service TermService
@@ -60,8 +65,8 @@ jobs:
           Write-Host "======================================"
           Write-Host "RDP READY"
           Write-Host "Computer: $addr"
-          Write-Host "User: vanducdev"
-          Write-Host "Password: Vanducdev@2002"
+          Write-Host "User: .\vanducdev"
+          Write-Host "Password: DucLe@Server2026!"
           Write-Host "======================================"
 
           while ($true) {
