@@ -16,17 +16,22 @@ jobs:
       env:
         NGROK_TOKEN: "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
       run: |
-        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.dev/ngrok.asc >/dev/null
-        echo "deb [signed-by=/etc/apt/trusted.gpg.dev/ngrok.asc] https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.dev/ngrok.list
-        sudo apt-get update && sudo apt-get install ngrok
+        # Sửa lại đường dẫn thư mục chuẩn /etc/apt/trusted.gpg.d/
+        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+        echo "deb [signed-by=/etc/apt/trusted.gpg.d/ngrok.asc] https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+        sudo apt-get update && sudo apt-get install ngrok -y
         
+        # Cấu hình token và mở cổng TCP thô
         ngrok config add-authtoken $NGROK_TOKEN
         ngrok tcp 22 > /dev/null 2>&1 &
         
+        # Đợi 5 giây cho ngrok thiết lập kết nối ổn định
         sleep 5
+        echo ""
         echo "=== THÔNG TIN ĐIỀN VÀO TERMIUS ==="
         curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url'
         echo "=================================="
+        echo ""
         
         # Treo VPS 5 tiếng rưỡi
         sleep 19800
