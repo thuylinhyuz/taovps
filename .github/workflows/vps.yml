@@ -1,4 +1,4 @@
-name: Windows VPS (Playit CLI - Dạng Ubuntu)
+name: Windows RDP (Ultimate Stable)
 
 on:
   workflow_dispatch:
@@ -7,30 +7,28 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-    - name: Kích hoạt RDP và Mở Cổng
+    - name: Setup RDP
       run: |
         net user runneradmin "DucYuz@#2010$!"
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
-    - name: Chạy Playit CLI (Giống Ubuntu)
+    - name: Start Tunnel
       shell: powershell
       run: |
-        Write-Host "🚀 Đang tải Playit CLI..."
+        Write-Host "Downloading Playit agent..."
         Invoke-WebRequest -Uri "https://playit-cloud.github.io/playit-agent-cli-win/latest/playit.exe" -OutFile "playit.exe"
         
-        Write-Host "🚀 Đang thiết lập đường hầm..."
-        # Lệnh này mở thẳng cổng 3389 mà không cần cấu hình gì cả
+        Write-Host "Starting tunnel..."
         Start-Process ./playit.exe -ArgumentList "--local-addr 127.0.0.1:3389 --port 3389" -WindowStyle Hidden
         
-        Write-Host "⏳ Đợi hệ thống gán địa chỉ..."
-        Start-Sleep -s 15
+        Write-Host "Waiting for tunnel initialization..."
+        Start-Sleep -s 20
         
-        Write-Host "`n=========================================" -ForegroundColor Green
-        Write-Host "   🎉 VPS ĐÃ ONLINE (DẠNG UBUNTU) 🎉" -ForegroundColor Green
-        Write-Host "=========================================" -ForegroundColor Green
-        Write-Host "👤 User: runneradmin"
-        Write-Host "🔑 Pass: DucYuz@#2010$!"
-        Write-Host "👉 Địa chỉ: tcp://connect.playit.gg:xxxxx" -ForegroundColor Cyan
-        Write-Host "=========================================" -ForegroundColor Green
-        Write-Host "Lưu ý: Nếu không hiện port, hãy xem log chi tiết!"
+        Write-Host "========================================="
+        Write-Host "   RDP CONNECTION DETAILS"
+        Write-Host "========================================="
+        Write-Host "User: runneradmin"
+        Write-Host "Pass: DucYuz@#2010$!"
+        Write-Host "Address: Check playit.gg dashboard for your TCP address"
+        Write-Host "========================================="
