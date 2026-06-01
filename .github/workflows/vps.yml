@@ -1,60 +1,45 @@
-name: Windows RDP
+name: Windows RDP Cloudflare
 
 on:
   workflow_dispatch:
 
 jobs:
-  build:
+  rdp:
     runs-on: windows-latest
     timeout-minutes: 360
 
     steps:
-      - name: Download ngrok
-        shell: powershell
-        run: |
-          Invoke-WebRequest "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile ngrok.zip
-          Expand-Archive ngrok.zip -DestinationPath ngrok
-
-      - name: Auth ngrok
-        shell: powershell
-        run: |
-          .\ngrok\ngrok.exe config add-authtoken $Env:NGROK_AUTH_TOKEN
-          .\ngrok\ngrok.exe config check
-        env:
-          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-
       - name: Enable RDP
         shell: powershell
         run: |
           net user runneradmin "P@ssw0rd123"
+          net localgroup Administrators runneradmin /add
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1
 
-      - name: Start ngrok
+      - name: Download Cloudflared
         shell: powershell
         run: |
-          Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389 --log=stdout --log-level=debug" -RedirectStandardOutput ngrok.log -RedirectStandardError ngrok.err
-          Start-Sleep -Seconds 25
+          Invoke-WebRequest "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile cloudflared.exe
 
-          Write-Host "=== NGROK PROCESS ==="
-          Get-Process ngrok -ErrorAction SilentlyContinue
+      - name: Start Tunnel
+        shell: powershell
+        env:
+          CF_TUNNEL_TOKEN: ${{ secrets.CF_TUNNEL_TOKEN }}
+        run: |
+          Start-Process .\cloudflared.exe -ArgumentList "tunnel run --token $env:CF_TUNNEL_TOKEN"
+          Start-Sleep 20
 
-          Write-Host "=== NGROK LOG ==="
-          Get-Content ngrok.log -ErrorAction SilentlyContinue
+          Write-Host "======================="
+          Write-Host "RDP READY"
+          Write-Host "HOST: rdp.ducyuz.com"
+          Write-Host "USER: runneradmin"
+          Write-Host "PASS: P@ssw0rd123"
+          Write-Host "======================="
 
-          Write-Host "=== NGROK ERR ==="
-          Get-Content ngrok.err -ErrorAction SilentlyContinue
-
-          Write-Host "=== TUNNELS ==="
-          $tunnels = Invoke-RestMethod "http://127.0.0.1:4040/api/tunnels"
-          $publicUrl = $tunnels.tunnels[0].public_url
-
-          Write-Host "RDP: $publicUrl"
-          Write-Host "User: runneradmin"
-          Write-Host "Pass: P@ssw0rd123"
-
-      - name: Keep alive
+      - name: Keep Alive
         shell: powershell
         run: |
-          while ($true) { Start-Sleep -Seconds 60 }
+          while ($true) {
+            Start-Sleep 60
+          }
