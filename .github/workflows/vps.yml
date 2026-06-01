@@ -1,4 +1,4 @@
-name: Windows VPS (Serveo TCP - Khong Can Tai App)
+name: Windows VPS (Pinggy TCP - Không Lỗi 404)
 
 on:
   workflow_dispatch:
@@ -9,36 +9,27 @@ jobs:
     steps:
     - name: Kích hoạt Remote Desktop và Đổi Mật Khẩu
       run: |
-        # Đổi mật khẩu tài khoản mặc định runneradmin
         net user runneradmin "DucYuz@#2010$!"
-        
-        # Mở tính năng Remote Desktop (RDP) trên Windows Server
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
-    - name: Khởi tạo đường hầm Serveo TCP qua SSH
+    - name: Khởi tạo đường hầm qua Pinggy IO
       shell: cmd
       run: |
-        echo 🚀 Dang thiet lap duong ham Serveo TCP (Khong can tai file)...
+        echo 🚀 Dang thiet lap duong ham TCP qua Pinggy...
         
-        :: Chạy SSH nền để forward cổng RDP 3389 ra máy chủ công khai serveo.net
-        :: Tự động chấp nhận key (StrictHostKeyChecking=no) để không bị kẹt khi chạy ngầm
-        start /b ssh -o StrictHostKeyChecking=no -R 0:localhost:3389 serveo.net > serveo.log 2>&1
+        :: Chạy SSH nền kết nối qua Pinggy để forward cổng RDP 3389
+        start /b ssh -o StrictHostKeyChecking=no -p 443 -R 0:localhost:3389 tcp@connect.pinggy.io > pinggy.log 2>&1
         
-        echo 🚀 Doi 12 giay de he thong nhan địa chỉ công khai...
-        ping 127.0.0.1 -n 12 > nul
+        echo 🚀 Doi 15 giay de he thong nhan địa chỉ...
+        ping 127.0.0.1 -n 15 > nul
         
         echo 🚀 Trich xuat thong tin ket noi tu Log...
-        type serveo.log
+        type pinggy.log
         
         echo =========================================
-        echo    🎉 VPS WINDOWS SERVEO DA SAN SANG 🎉   
+        echo    🎉 VPS WINDOWS PINGGY DA SAN SANG 🎉   
         echo =========================================
         echo 👤 Username: runneradmin
         echo 🔑 Password: DucYuz@#2010$!
         echo =========================================
-        echo 👉 Đọc dòng chữ "Forwarding TCP connection từ..." trong log bên trên để lấy Port!
-
-    - name: Treo VPS giữ kết nối sống 6 tiếng
-      run: |
-        Start-Sleep -s 21600
