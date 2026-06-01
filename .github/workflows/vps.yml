@@ -1,89 +1,27 @@
-name: Ubuntu VPS (Domain Riêng - No Card)
+name: Ubuntu VPS (Vào thẳng bằng Termius)
 
-on:
+on: 
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Cài đặt Cloudflare Tunnel
+    - name: Cài đặt tmate
       run: |
-        curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-        sudo dpkg -i cloudflared.deb
-
-    - name: Đổi mật khẩu SSH & Khởi động SSH Service
+        sudo apt-get update
+        sudo apt-get install -y tmate
+        
+    - name: Khởi chạy tmate lấy thông tin SSH
       run: |
-        echo "runner:123456" | sudo chpasswd
-        sudo systemctl start ssh
-
-    - name: Khởi chạy Tunnel ẩn danh & Tự động trỏ Domain
-      env:
-        CF_EMAIL: ${{ secrets.CF_EMAIL }}
-        CF_KEY: ${{ secrets.CF_KEY }}
-        CF_SUBDOMAIN: ${{ secrets.CF_DOMAIN }}
-      run: |
-        # 1. Chạy tunnel ẩn danh và xuất log ra file
-        cloudflared tunnel --url ssh://localhost:22 > tunnel.log 2>&1 &
+        # Chạy tmate ngầm
+        tmate -S /tmp/tmate.sock new-session -d
+        tmate -S /tmp/tmate.sock wait tmate
         
-        # 2. Vòng lặp chờ lấy link *.trycloudflare.com (tối đa 30 giây)
-        TUNNEL_URL=""
-        for i in {1..15}; do
-          sleep 2
-          TUNNEL_URL=$(cat tunnel.log | grep -oE "https://[a-zA-Z0-9-]+.trycloudflare.com" | head -n 1 | sed 's/https:\/\///')
-          if [ ! -z "$TUNNEL_URL" ]; then
-            break
-          fi
-          echo "Đang đợi Cloudflare cấp Link Tunnel... ($((i*2))s)"
-        done
+        echo "=== THÔNG TIN ĐỂ ĐIỀN VÀO TERMIUS ==="
+        # Lệnh này để lấy chuỗi SSH đầy đủ nhằm tách Host và Port
+        tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}'
+        echo "====================================="
         
-        echo "Tunnel URL kết nối: $TUNNEL_URL"
-        
-        if [ -z "$TUNNEL_URL" ]; then
-          echo "LỖI: Không lấy được Tunnel URL từ Cloudflare, chi tiết log:"
-          cat tunnel.log
-          exit 1
-        fi
-
-        # Tách lấy root domain và subdomain từ chuỗi người dùng nhập
-        if [[ "$CF_SUBDOMAIN" =~ ^([a-zA-Z0-9.-]+)\.([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+)$ ]]; then
-          SUB_PREFIX="${BASH_REMATCH[1]}"
-          ROOT_DOMAIN="${BASH_REMATCH[2]}"
-        else
-          ROOT_DOMAIN="$CF_SUBDOMAIN"
-          SUB_PREFIX="vps"
-        fi
-
-        # 3. Gọi API Cloudflare để tìm Zone ID của Domain gốc
-        ZONE_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$ROOT_DOMAIN" \
-          -H "X-Auth-Email: $CF_EMAIL" \
-          -H "X-Auth-Key: $CF_KEY" \
-          -H "Content-Type: application/json" | jq -r '.result[0].id')
-
-        # 4. Tìm xem đã có bản ghi CNAME cũ chưa để cập nhật hoặc tạo mới
-        RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?type=CNAME&name=$CF_SUBDOMAIN" \
-          -H "X-Auth-Email: $CF_EMAIL" \
-          -H "X-Auth-Key: $CF_KEY" \
-          -H "Content-Type: application/json" | jq -r '.result[0].id')
-
-        if [ "$RECORD_ID" != "null" ] && [ ! -z "$RECORD_ID" ]; then
-          # Cập nhật bản ghi cũ
-          curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$RECORD_ID" \
-            -H "X-Auth-Email: $CF_EMAIL" \
-            -H "X-Auth-Key: $CF_KEY" \
-            -H "Content-Type: application/json" \
-            --data "{\"type\":\"CNAME\",\"name\":\"$SUB_PREFIX\",\"content\":\"$TUNNEL_URL\",\"ttl\":1,\"proxied\":false}" > /dev/null
-        else
-          # Tạo bản ghi mới
-          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
-            -H "X-Auth-Email: $CF_EMAIL" \
-            -H "X-Auth-Key: $CF_KEY" \
-            -H "Content-Type: application/json" \
-            --data "{\"type\":\"CNAME\",\"name\":\"$SUB_PREFIX\",\"content\":\"$TUNNEL_URL\",\"ttl\":1,\"proxied\":false}" > /dev/null
-        fi
-
-        echo "=== CẤU HÌNH THÀNH CÔNG ==="
-        echo "Subdomain $CF_SUBDOMAIN đang trỏ về VPS GitHub!"
-        
-        # Giữ VPS chạy 5.5 tiếng
+        # Treo VPS 5 tiếng rưỡi
         sleep 19800
