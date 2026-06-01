@@ -1,4 +1,4 @@
-name: Ubuntu VPS (Dùng Ngrok Vào Thẳng Termius)
+name: Ubuntu VPS (Dùng LocalXpose Vào Thẳng Termius)
 
 on:
   workflow_dispatch:
@@ -12,42 +12,31 @@ jobs:
         echo "runner:123456" | sudo chpasswd
         sudo systemctl start ssh
 
-    - name: Chạy Ngrok xuất link trực tiếp
+    - name: Khởi động LocalXpose lấy link SSH
       run: |
-        echo "🚀 Đang tải Ngrok Agent từ CDN chính thức..."
-        # Link tải trực tiếp file binary sạch chuẩn 100% không qua trung gian
-        curl -s https://agent.ngrok.com/ngrok-v3-stable-linux-amd64.tgz --output ngrok.tgz
+        echo "🚀 Đang cài đặt LocalXpose..."
+        # Tải file binary chính thức phiên bản Linux x64
+        curl -sL https://localxpose.io/ext/lxpose-linux-amd64.tgz -o lxpose.tgz
+        tar -xzf lxpose.tgz
+        sudo mv locaxpose /usr/local/bin/locaxpose
         
-        echo "📦 Đang giải nén và cấu hình..."
-        tar -xzf ngrok.tgz
-        sudo mv ngrok /usr/local/bin/
+        echo "⚙️ Đang cấu hình đường hầm TCP..."
+        # Khởi chạy đường hầm TCP trỏ thẳng vào cổng SSH (cổng 22)
+        locaxpose tunnel tcp --to :22 --log=stdout > localxpose.log &
         
-        # Điền chính xác Authtoken Ngrok của ông vào ô dưới đây
-        ngrok config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f" 
-
-        echo "🚀 Đang khởi động đường hầm TCP qua cổng 22..."
-        # Khởi động ngrok ngầm trỏ vào cổng SSH
-        ngrok tcp 22 --log=stdout > ngrok.log &
-        
-        # Đợi 5 giây cho hệ thống thiết lập đường truyền ổn định
+        # Đợi 5 giây cho hệ thống mở cổng thành công
         sleep 5
         
-        # Kiểm tra và tự động cài đặt jq nếu hệ thống thiếu
-        if ! command -v jq &> /dev/null; then
-          sudo apt-get update && sudo apt-get install jq -y > /dev/null
-        fi
-
-        # Trích xuất địa chỉ public URL từ cổng API cục bộ của Ngrok
-        NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+        # Trích xuất địa chỉ IP và Port từ file log công khai
+        LX_URL=$(grep -oE 'us\.locaxpose\.io:[0-9]+|eu\.locaxpose\.io:[0-9]+' localxpose.log | head -n 1)
         
-        if [ "$NGROK_URL" != "null" ] && [ ! -z "$NGROK_URL" ]; then
-          # Tách chuỗi tcp://0.tcp.ap.ngrok.io:12345 thành Hostname và Port riêng biệt để copy
-          HOST=$(echo $NGROK_URL | sed 's/tcp:\/\///' | cut -d':' -f1)
-          PORT=$(echo $NGROK_URL | cut -d':' -f2)
+        if [ ! -z "$LX_URL" ]; then
+          HOST=$(echo $LX_URL | cut -d':' -f1)
+          PORT=$(echo $LX_URL | cut -d':' -f2)
           
           echo ""
           echo "========================================="
-          echo "   🎉 VPS NGROK ĐÃ SẴN SÀNG KẾT NỐI 🎉   "
+          echo "   🎉 VPS ĐÃ SẴN SÀNG - KẾT NỐI NGAY 🎉   "
           echo "========================================="
           echo "📍 Hostname: $HOST"
           echo "📍 Port: $PORT"
@@ -55,10 +44,11 @@ jobs:
           echo "🔑 Password: 123456"
           echo "========================================="
           echo ""
+          echo "👉 Ông copy đúng Hostname và Port ở trên điền vào Termius là xong!"
         else
-          echo "❌ Lỗi: Không lấy được link kết nối ngrok. Log chi tiết dưới đây:"
-          cat ngrok.log
+          echo "❌ Không lấy được link. Nội dung log lỗi chi tiết:"
+          cat localxpose.log
         fi
 
-        # Giữ VPS sống trong 6 tiếng để ông làm việc
+        # Giữ VPS hoạt động liên tục trong 6 tiếng
         sleep 21600
