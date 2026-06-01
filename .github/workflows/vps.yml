@@ -26,12 +26,12 @@ jobs:
       - name: Enable RDP
         shell: powershell
         run: |
-          net user vanducdev "DucLe@Server2026!" /add
-          net user vanducdev "DucLe@Server2026!"
-          net user vanducdev /active:yes
+          cmd /c "net user vanducdev Cloud@2026 /add"
+          cmd /c "net user vanducdev Cloud@2026"
+          cmd /c "net user vanducdev /active:yes"
 
-          net localgroup Administrators vanducdev /add
-          net localgroup "Remote Desktop Users" vanducdev /add
+          cmd /c "net localgroup Administrators vanducdev /add"
+          cmd /c "net localgroup ""Remote Desktop Users"" vanducdev /add"
 
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 0
@@ -65,8 +65,8 @@ jobs:
           Write-Host "======================================"
           Write-Host "RDP READY"
           Write-Host "Computer: $addr"
-          Write-Host "User: .\vanducdev"
-          Write-Host "Password: DucLe@Server2026!"
+          Write-Host "User: vanducdev"
+          Write-Host "Password: Cloud@2026"
           Write-Host "======================================"
 
           while ($true) {
