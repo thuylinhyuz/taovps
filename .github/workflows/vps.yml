@@ -20,11 +20,17 @@ jobs:
         echo "deb [signed-by=/etc/apt/trusted.gpg.d/ngrok.asc] https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
         sudo apt-get update && sudo apt-get install ngrok -y
         
+        # Cấu hình token
         ngrok config add-authtoken $NGROK_TOKEN
+        
+        # Ép hủy toàn bộ tunnel cũ đang treo trên tài khoản để giải phóng Token
+        curl -s -X POST "https://api.ngrok.com/tunnels/kill_all" -H "Authorization: Bearer $NGROK_TOKEN" > /dev/null 2>&1 || true
+        
+        # Khởi chạy đường hầm TCP mới
         ngrok tcp 22 > /dev/null 2>&1 &
         
         # Vòng lặp chủ động chờ Ngrok lấy được link (tối đa 60 giây)
-        echo "Đang kết nối đến hệ thống Ngrok để tạo đường hầm..."
+        echo "Đang kết nối đến hệ thống Ngrok để tạo đường hầm mới..."
         URL=""
         for i in {1..30}; do
           sleep 2
@@ -38,7 +44,7 @@ jobs:
         echo ""
         echo "=== THÔNG TIN ĐIỀN VÀO TERMIUS ==="
         if [ -z "$URL" ] || [ "$URL" = "null" ]; then
-          echo "LỖI: Khởi tạo Ngrok thất bại. Vui lòng kiểm tra lại Token!"
+          echo "LỖI: Vẫn bị trùng kết nối hoặc Token hết hạn. Hãy vào web Ngrok đóng các tunnel cũ thủ công!"
         else
           echo "Hostname: $(echo $URL | cut -d/ -f3 | cut -d: -f1)"
           echo "Port: $(echo $URL | cut -d: -f3)"
