@@ -1,4 +1,4 @@
-name: Windows VPS (Ngrok TCP - Choco Auto Install)
+name: Windows VPS (Localtonet TCP - Không Cần Thẻ)
 
 on:
   workflow_dispatch:
@@ -12,45 +12,24 @@ jobs:
         # Đổi mật khẩu tài khoản mặc định runneradmin
         net user runneradmin "DucYuz@#2010$!"
         
-        # Mở tính năng Remote Desktop (RDP)
+        # Mở tính năng Remote Desktop (RDP) trên Windows Server
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
-    - name: Cài đặt Ngrok tự động qua Chocolatey
+    - name: Tải và Khởi chạy Localtonet x64
       run: |
-        Write-Host "🚀 Đang cài đặt Ngrok chính thức qua Choco (Bao sập link)..."
-        choco install ngrok -y
+        Write-Host "🚀 Đang tải Localtonet chính thức bản x64..."
+        Invoke-WebRequest -Uri "https://localtonet.com/download/localtonet-windows-x64.zip" -OutFile "localtonet.zip"
         
-        Write-Host "🚀 Cấu hình Token Ngrok..."
-        # 🟢 ÔNG ĐIỀN CHÍNH XÁC AUTHTOKEN NGROK CỦA ÔNG VÀO ĐÂY
-        ngrok config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
+        Write-Host "🚀 Giải nén bộ cài..."
+        Expand-Archive -Path "localtonet.zip" -DestinationPath "." -Force
         
-        Write-Host "🚀 Đang mở đường hầm TCP cho cổng RDP 3389..."
-        Start-Process ngrok -ArgumentList "tcp 3389" -RedirectStandardOutput "ngrok.log"
+        Write-Host "🚀 Khởi chạy hầm RDP công khai..."
+        # 🟢 ÔNG ĐIỀN CHÍNH XÁC AUTH_TOKEN LOCALTONET CỦA ÔNG VÀO CHỖ "xxxx" DƯỚI ĐÂY NHA:
+        Start-Process ./localtonet.exe -ArgumentList "authtoken OzX6UWcSDwAHMJdeYbjfTVl2t9ro71Bh0" -WindowStyle Hidden
         
-        Write-Host "🚀 Đợi 12 giây để hệ thống phân giải link..."
-        Start-Sleep -s 12
-        
-        Write-Host "🚀 Trích xuất thông tin kết nối từ API..."
-        $ngrok_api = curl -s http://127.0.0.1:4040/api/tunnels | ConvertFrom-Json
-        $public_url = $ngrok_api.tunnels[0].public_url
-        
-        if ($public_url) {
-            $clean_url = $public_url -replace "tcp://", ""
-            Write-Output ""
-            Write-Output "========================================="
-            Write-Output "   🎉 VPS WINDOWS NGROK ĐÃ SẴN SÀNG 🎉   "
-            Write-Output "========================================="
-            Write-Output "📍 Địa chỉ điền vào PC Name: $clean_url"
-            Write-Output "👤 Username: runneradmin"
-            Write-Output "🔑 Password: DucYuz@#2010$!"
-            Write-Output "========================================="
-            Write-Output ""
-            Write-Output "👉 Copy toàn bộ dòng Địa chỉ vứt vào app Remote Desktop!"
-        } else {
-            Write-Output "❌ Không khởi tạo được hầm Ngrok. Nội dung log:"
-            Get-Content ngrok.log
-        }
+        Write-Host "🚀 Đợi 10 giây để hệ thống thiết lập đường truyền..."
+        Start-Sleep -s 10
 
     - name: Treo VPS giữ kết nối sống 6 tiếng
       run: |
