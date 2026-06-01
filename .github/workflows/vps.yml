@@ -1,4 +1,4 @@
-name: Windows VPS (Ngrok TCP - Bản Khóa Lỗi Giải Nén)
+name: Windows VPS (Ngrok TCP - Fix Chuẩn 64Bit)
 
 on:
   workflow_dispatch:
@@ -9,28 +9,31 @@ jobs:
     steps:
     - name: Kích hoạt Remote Desktop và Đổi Mật Khẩu
       run: |
-        # Đổi mật khẩu tài khoản mặc định runneradmin bằng lệnh net user thuần cho mượt
+        # Đổi mật khẩu tài khoản mặc định runneradmin
         net user runneradmin "DucYuz@#2010$!"
         
-        # Mở tính năng Remote Desktop (RDP) trên hệ thống
+        # Mở tính năng Remote Desktop (RDP)
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
     - name: Tải và Khởi chạy Ngrok TCP
       shell: cmd
       run: |
-        echo 🚀 Dang tai truc tiep file ngrok.exe...
-        curl -L --output ngrok.exe https://github.com/v2rayVLESSTunnel/Ngrok-Exe-Storage/releases/download/v3/ngrok.exe
+        echo 🚀 Dang tai ban Ngrok chinh thuc Windows x64...
+        curl -L --output ngrok.zip https://bin.equinox.io/c/bNyj1mQcaYp/ngrok-v3-stable-windows-amd64.zip
+        
+        echo 🚀 Giai nen bang lệnh he thong tar...
+        tar -xf ngrok.zip
         
         echo 🚀 Cau hinh Token Ngrok...
-        :: 🟢 ÔNG NHỚ ĐIỀN CHÍNH XÁC AUTHTOKEN NGROK CỦA ÔNG VÀO ĐÂY NHA
+        :: 🟢 ÔNG ĐIỀN CHÍNH XÁC AUTHTOKEN NGROK CỦA ÔNG VÀO ĐÂY
         ngrok.exe config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
         
         echo 🚀 Dang mo duong ham TCP cho RDP (Cong 3389)...
         start /b ngrok.exe tcp 3389
         
-        echo 🚀 Doi 10 giay de he thong lay link...
-        timeout /t 10 /nobreak > nul
+        echo 🚀 Cho he thong On dinh (Khong dung timeout gay loi)...
+        ping 127.0.0.1 -n 10 > nul
         
         echo 🚀 Trich xuat dia chi ket noi tu API...
         curl -s http://127.0.0.1:4040/api/tunnels > tunnels.json
