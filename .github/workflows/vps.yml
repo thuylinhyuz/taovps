@@ -1,4 +1,4 @@
-name: Windows VPS (Microsoft Dev Tunnels - Sửa Lỗi Treo)
+name: Windows VPS (Playit CLI - Dạng Ubuntu)
 
 on:
   workflow_dispatch:
@@ -7,32 +7,30 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-    - name: Kích hoạt Remote Desktop và Đổi Mật Khẩu
+    - name: Kích hoạt RDP và Mở Cổng
       run: |
         net user runneradmin "DucYuz@#2010$!"
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
-    - name: Khởi tạo đường hầm qua Dev Tunnels
-      shell: cmd
+    - name: Chạy Playit CLI (Giống Ubuntu)
+      shell: powershell
       run: |
-        echo 🚀 Dang khoi tao duong ham va tu dong dong y dieu khoan Microsoft...
+        Write-Host "🚀 Đang tải Playit CLI..."
+        Invoke-WebRequest -Uri "https://playit-cloud.github.io/playit-agent-cli-win/latest/playit.exe" -OutFile "playit.exe"
         
-        :: Them tham so --accept-tos de khong bi ket cho bam phim Y
-        start /b devtunnel host -p 3389 --protocol tcp --allow-anonymous --accept-tos > devtunnel.log 2>&1
+        Write-Host "🚀 Đang thiết lập đường hầm..."
+        # Lệnh này mở thẳng cổng 3389 mà không cần cấu hình gì cả
+        Start-Process ./playit.exe -ArgumentList "--local-addr 127.0.0.1:3389 --port 3389" -WindowStyle Hidden
         
-        echo 🚀 Dang doi 15 giay de nhan kết noi...
-        ping 127.0.0.1 -n 15 > nul
+        Write-Host "⏳ Đợi hệ thống gán địa chỉ..."
+        Start-Sleep -s 15
         
-        echo =========================================
-        echo          THONG TIN KET NOI VPS           
-        echo =========================================
-        type devtunnel.log
-        echo =========================================
-        echo 👤 Username: runneradmin
-        echo 🔑 Password: DucYuz@#2010$!
-        echo =========================================
-
-    - name: Treo VPS 6 tieng
-      run: |
-        Start-Sleep -s 21600
+        Write-Host "`n=========================================" -ForegroundColor Green
+        Write-Host "   🎉 VPS ĐÃ ONLINE (DẠNG UBUNTU) 🎉" -ForegroundColor Green
+        Write-Host "=========================================" -ForegroundColor Green
+        Write-Host "👤 User: runneradmin"
+        Write-Host "🔑 Pass: DucYuz@#2010$!"
+        Write-Host "👉 Địa chỉ: tcp://connect.playit.gg:xxxxx" -ForegroundColor Cyan
+        Write-Host "=========================================" -ForegroundColor Green
+        Write-Host "Lưu ý: Nếu không hiện port, hãy xem log chi tiết!"
