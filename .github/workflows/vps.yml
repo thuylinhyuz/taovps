@@ -1,4 +1,4 @@
-name: Windows VPS (Microsoft Dev Tunnels - Bao Chay 100%)
+name: Windows VPS (Microsoft Dev Tunnels - Sửa Lỗi Treo)
 
 on:
   workflow_dispatch:
@@ -13,23 +13,26 @@ jobs:
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
-    - name: Khởi tạo đường hầm qua Dev Tunnels Chính Chủ
+    - name: Khởi tạo đường hầm qua Dev Tunnels
       shell: cmd
       run: |
-        echo 🚀 Dang thiet lap duong ham qua Microsoft Dev Tunnels...
+        echo 🚀 Dang khoi tao duong ham va tu dong dong y dieu khoan Microsoft...
         
-        :: Khởi tạo hầm kết nối không cần đăng nhập, mở trực tiếp cổng RDP 3389 sang giao thức TCP công khai
-        start /b devtunnel host -p 3389 --protocol tcp --allow-anonymous > devtunnel.log 2>&1
+        :: Them tham so --accept-tos de khong bi ket cho bam phim Y
+        start /b devtunnel host -p 3389 --protocol tcp --allow-anonymous --accept-tos > devtunnel.log 2>&1
         
-        echo 🚀 Doi 15 giay de he thong nhan địa chỉ kết nối...
+        echo 🚀 Dang doi 15 giay de nhan kết noi...
         ping 127.0.0.1 -n 15 > nul
         
-        echo 🚀 Trich xuat thong tin ket noi tu Log...
-        type devtunnel.log
-        
         echo =========================================
-        echo   🎉 VPS WINDOWS MICROSOFT DA SAN SANG 🎉   
+        echo          THONG TIN KET NOI VPS           
+        echo =========================================
+        type devtunnel.log
         echo =========================================
         echo 👤 Username: runneradmin
         echo 🔑 Password: DucYuz@#2010$!
         echo =========================================
+
+    - name: Treo VPS 6 tieng
+      run: |
+        Start-Sleep -s 21600
