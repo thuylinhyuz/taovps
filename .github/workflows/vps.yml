@@ -19,6 +19,7 @@ jobs:
         shell: powershell
         run: |
           .\ngrok\ngrok.exe config add-authtoken $Env:NGROK_AUTH_TOKEN
+          .\ngrok\ngrok.exe config check
         env:
           NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
 
@@ -30,25 +31,30 @@ jobs:
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1
 
-      - name: Start ngrok tunnel
+      - name: Start ngrok
         shell: powershell
         run: |
-          Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389 --log=stdout" -WindowStyle Hidden
-          Start-Sleep -Seconds 15
+          Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389 --log=stdout --log-level=debug" -RedirectStandardOutput ngrok.log -RedirectStandardError ngrok.err
+          Start-Sleep -Seconds 25
 
-          $tunnels = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels"
+          Write-Host "=== NGROK PROCESS ==="
+          Get-Process ngrok -ErrorAction SilentlyContinue
+
+          Write-Host "=== NGROK LOG ==="
+          Get-Content ngrok.log -ErrorAction SilentlyContinue
+
+          Write-Host "=== NGROK ERR ==="
+          Get-Content ngrok.err -ErrorAction SilentlyContinue
+
+          Write-Host "=== TUNNELS ==="
+          $tunnels = Invoke-RestMethod "http://127.0.0.1:4040/api/tunnels"
           $publicUrl = $tunnels.tunnels[0].public_url
 
-          Write-Host "======================================"
-          Write-Host "RDP READY"
-          Write-Host "Address: $publicUrl"
+          Write-Host "RDP: $publicUrl"
           Write-Host "User: runneradmin"
-          Write-Host "Password: P@ssw0rd123"
-          Write-Host "======================================"
+          Write-Host "Pass: P@ssw0rd123"
 
       - name: Keep alive
         shell: powershell
         run: |
-          while ($true) {
-            Start-Sleep -Seconds 60
-          }
+          while ($true) { Start-Sleep -Seconds 60 }
