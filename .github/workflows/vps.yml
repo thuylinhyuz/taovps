@@ -28,9 +28,21 @@ jobs:
         shell: powershell
         run: |
           net user runneradmin "@cyb3rking"
+
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
+          Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 0
+
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1
+
+          sc.exe config TermService start= auto
+          net stop TermService /y
+          net start TermService
+
+          Write-Host "=== CHECK RDP SERVICE ==="
+          Get-Service TermService
+
+          Write-Host "=== CHECK PORT 3389 ==="
+          netstat -ano | findstr 3389
 
       - name: Create RDP Tunnel
         shell: powershell
@@ -50,7 +62,6 @@ jobs:
 
           $tunnels = Invoke-RestMethod "http://127.0.0.1:4040/api/tunnels"
           $publicUrl = $tunnels.tunnels[0].public_url
-
           $addr = $publicUrl -replace "tcp://",""
 
           Write-Host "======================================"
