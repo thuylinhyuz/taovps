@@ -14,27 +14,34 @@ jobs:
 
     - name: Chạy Ngrok xuất link trực tiếp
       run: |
-        echo "🚀 Đang tải Ngrok binary..."
-        # Tải trực tiếp file nén chính chủ, không qua PPA APT lằng nhằng
-        curl -s https://bin.equinox.io/c/bNyj1mQcaMx/ngrok-v3-stable-linux-amd64.tgz --output ngrok.tgz
+        echo "🚀 Đang tải Ngrok Agent từ CDN chính thức..."
+        # Link tải trực tiếp file binary sạch chuẩn 100% không qua trung gian
+        curl -s https://agent.ngrok.com/ngrok-v3-stable-linux-amd64.tgz --output ngrok.tgz
+        
+        echo "📦 Đang giải nén và cấu hình..."
         tar -xzf ngrok.tgz
         sudo mv ngrok /usr/local/bin/
         
-        # Điền Authtoken Ngrok của ông vào đây
+        # Điền chính xác Authtoken Ngrok của ông vào ô dưới đây
         ngrok config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f" 
 
-        echo "🚀 Đang khởi động đường hầm TCP..."
-        # Khởi động ngrok ngầm trỏ vào cổng SSH (TCP 22)
+        echo "🚀 Đang khởi động đường hầm TCP qua cổng 22..."
+        # Khởi động ngrok ngầm trỏ vào cổng SSH
         ngrok tcp 22 --log=stdout > ngrok.log &
         
-        # Đợi 5 giây cho ngrok ổn định kết nối
+        # Đợi 5 giây cho hệ thống thiết lập đường truyền ổn định
         sleep 5
         
-        # Trích xuất địa chỉ public URL từ API nội bộ của Ngrok
+        # Kiểm tra và tự động cài đặt jq nếu hệ thống thiếu
+        if ! command -v jq &> /dev/null; then
+          sudo apt-get update && sudo apt-get install jq -y > /dev/null
+        fi
+
+        # Trích xuất địa chỉ public URL từ cổng API cục bộ của Ngrok
         NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
         
         if [ "$NGROK_URL" != "null" ] && [ ! -z "$NGROK_URL" ]; then
-          # Bóc tách chuỗi tcp://0.tcp.ap.ngrok.io:12345 thành Hostname và Port riêng biệt
+          # Tách chuỗi tcp://0.tcp.ap.ngrok.io:12345 thành Hostname và Port riêng biệt để copy
           HOST=$(echo $NGROK_URL | sed 's/tcp:\/\///' | cut -d':' -f1)
           PORT=$(echo $NGROK_URL | cut -d':' -f2)
           
@@ -49,9 +56,9 @@ jobs:
           echo "========================================="
           echo ""
         else
-          echo "❌ Lỗi: Không lấy được link kết nối ngrok. Kiểm tra lại Authtoken nhé!"
+          echo "❌ Lỗi: Không lấy được link kết nối ngrok. Log chi tiết dưới đây:"
           cat ngrok.log
         fi
 
-        # Giữ VPS sống trong 6 tiếng để chạy tool
+        # Giữ VPS sống trong 6 tiếng để ông làm việc
         sleep 21600
