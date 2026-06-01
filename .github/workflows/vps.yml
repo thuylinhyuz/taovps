@@ -14,12 +14,13 @@ jobs:
 
     - name: Chạy Ngrok xuất link trực tiếp
       run: |
-        # Sửa lại đường dẫn cài đặt chuẩn của Ngrok
-        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.dev/ngrok.asc >/dev/null
-        echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-        sudo apt-get update && sudo apt-get install ngrok -y
+        echo "🚀 Đang tải Ngrok binary..."
+        # Tải trực tiếp file nén chính chủ, không qua PPA APT lằng nhằng
+        curl -s https://bin.equinox.io/c/bNyj1mQcaMx/ngrok-v3-stable-linux-amd64.tgz --output ngrok.tgz
+        tar -xzf ngrok.tgz
+        sudo mv ngrok /usr/local/bin/
         
-        # Nhớ thay đoạn token dưới đây bằng Authtoken Ngrok thật của ông nhé
+        # Điền Authtoken Ngrok của ông vào đây
         ngrok config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f" 
 
         echo "🚀 Đang khởi động đường hầm TCP..."
