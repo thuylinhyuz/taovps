@@ -1,4 +1,4 @@
-name: Windows RDP (Ultimate Stable)
+name: Windows RDP (Cloudflare Stable)
 
 on:
   workflow_dispatch:
@@ -16,19 +16,20 @@ jobs:
     - name: Start Tunnel
       shell: powershell
       run: |
-        Write-Host "Downloading Playit agent..."
-        Invoke-WebRequest -Uri "https://playit-cloud.github.io/playit-agent-cli-win/latest/playit.exe" -OutFile "playit.exe"
+        Write-Host "Installing Cloudflare Tunnel..."
+        choco install cloudflared -y
         
         Write-Host "Starting tunnel..."
-        Start-Process ./playit.exe -ArgumentList "--local-addr 127.0.0.1:3389 --port 3389" -WindowStyle Hidden
+        # Mở hầm TCP đến cổng 3389
+        start cloudflared tunnel --url tcp://localhost:3389
         
-        Write-Host "Waiting for tunnel initialization..."
-        Start-Sleep -s 20
+        Write-Host "Waiting..."
+        Start-Sleep -s 15
         
         Write-Host "========================================="
-        Write-Host "   RDP CONNECTION DETAILS"
+        Write-Host "   RDP READY"
         Write-Host "========================================="
         Write-Host "User: runneradmin"
         Write-Host "Pass: DucYuz@#2010$!"
-        Write-Host "Address: Check playit.gg dashboard for your TCP address"
+        Write-Host "Check your Cloudflare Dashboard for the tunnel address"
         Write-Host "========================================="
