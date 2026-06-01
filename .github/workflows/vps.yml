@@ -25,19 +25,27 @@ jobs:
       run: |
         # 1. Chạy tunnel ẩn danh và xuất log ra file
         cloudflared tunnel --url ssh://localhost:22 > tunnel.log 2>&1 &
-        sleep 8
         
-        # 2. Lấy link *.trycloudflare.com từ log
-        TUNNEL_URL=$(cat tunnel.log | grep -oE "https://[a-zA-Z0-9-]+\.trycloudflare\.com" | head -n 1 | sed 's/https:\/\///')
+        # 2. Vòng lặp chờ lấy link *.trycloudflare.com (tối đa 30 giây)
+        TUNNEL_URL=""
+        for i in {1..15}; do
+          sleep 2
+          TUNNEL_URL=$(cat tunnel.log | grep -oE "https://[a-zA-Z0-9-]+.trycloudflare.com" | head -n 1 | sed 's/https:\/\///')
+          if [ ! -z "$TUNNEL_URL" ]; then
+            break
+          fi
+          echo "Đang đợi Cloudflare cấp Link Tunnel... ($((i*2))s)"
+        done
+        
         echo "Tunnel URL kết nối: $TUNNEL_URL"
         
         if [ -z "$TUNNEL_URL" ]; then
-          echo "Không lấy được Tunnel URL, kiểm tra lại log:"
+          echo "LỖI: Không lấy được Tunnel URL từ Cloudflare, chi tiết log:"
           cat tunnel.log
           exit 1
         fi
 
-        # Tách lấy root domain và subdomain prefix từ chuỗi người dùng nhập
+        # Tách lấy root domain và subdomain từ chuỗi người dùng nhập
         if [[ "$CF_SUBDOMAIN" =~ ^([a-zA-Z0-9.-]+)\.([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+)$ ]]; then
           SUB_PREFIX="${BASH_REMATCH[1]}"
           ROOT_DOMAIN="${BASH_REMATCH[2]}"
