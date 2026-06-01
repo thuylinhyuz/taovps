@@ -1,4 +1,4 @@
-name: Windows VPS (Ngrok TCP - Fix Chuẩn 64Bit)
+name: Windows VPS (Ngrok TCP - Bản Fix Dứt Điểm Tải File)
 
 on:
   workflow_dispatch:
@@ -12,41 +12,49 @@ jobs:
         # Đổi mật khẩu tài khoản mặc định runneradmin
         net user runneradmin "DucYuz@#2010$!"
         
-        # Mở tính năng Remote Desktop (RDP)
+        # Mở tính năng Remote Desktop (RDP) trên hệ thống
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
-    - name: Tải và Khởi chạy Ngrok TCP
-      shell: cmd
+    - name: Tải và Khởi chạy Ngrok x64 Chuẩn
       run: |
-        echo 🚀 Dang tai ban Ngrok chinh thuc Windows x64...
-        curl -L --output ngrok.zip https://bin.equinox.io/c/bNyj1mQcaYp/ngrok-v3-stable-windows-amd64.zip
+        Write-Host "🚀 Đang tải Ngrok chính thức bản x64 qua PowerShell..."
+        Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQcaYp/ngrok-v3-stable-windows-amd64.zip" -OutFile "ngrok.zip"
         
-        echo 🚀 Giai nen bang lệnh he thong tar...
-        tar -xf ngrok.zip
+        Write-Host "🚀 Tiến hành giải nén file ZIP..."
+        Expand-Archive -Path "ngrok.zip" -DestinationPath "." -Force
         
-        echo 🚀 Cau hinh Token Ngrok...
-        :: 🟢 ÔNG ĐIỀN CHÍNH XÁC AUTHTOKEN NGROK CỦA ÔNG VÀO ĐÂY
-        ngrok.exe config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
+        Write-Host "🚀 Cấu hình Token Ngrok..."
+        # 🟢 ÔNG ĐIỀN CHÍNH XÁC AUTHTOKEN NGROK CỦA ÔNG VÀO ĐÂY NHA
+        ./ngrok.exe config add-authtoken "3EWEGi3gzFmjEIXCtl3gOpmQ9ua_3VRBy6msSiB86KLh3r98f"
         
-        echo 🚀 Dang mo duong ham TCP cho RDP (Cong 3389)...
-        start /b ngrok.exe tcp 3389
+        Write-Host "🚀 Đang mở đường hầm TCP cho cổng RDP 3389..."
+        Start-Process ./ngrok.exe -ArgumentList "tcp 3389" -RedirectStandardOutput "ngrok.log"
         
-        echo 🚀 Cho he thong On dinh (Khong dung timeout gay loi)...
-        ping 127.0.0.1 -n 10 > nul
+        Write-Host "🚀 Đợi 12 giây để hệ thống ổn định và lấy kết nối..."
+        Start-Sleep -s 12
         
-        echo 🚀 Trich xuat dia chi ket noi tu API...
-        curl -s http://127.0.0.1:4040/api/tunnels > tunnels.json
+        Write-Host "🚀 Trích xuất thông tin kết nối từ API..."
+        $ngrok_api = curl -s http://127.0.0.1:4040/api/tunnels | ConvertFrom-Json
+        $public_url = $ngrok_api.tunnels[0].public_url
         
-        echo =========================================
-        echo    🎉 VPS WINDOWS NGROK DA SAN SANG 🎉   
-        echo =========================================
-        powershell -Command "$json = Get-Content tunnels.json | ConvertFrom-Json; $url = $json.tunnels[0].public_url -replace 'tcp://', ''; Write-Output '📍 Dia chi dien vao PC Name: '"
-        powershell -Command "$json = Get-Content tunnels.json | ConvertFrom-Json; $url = $json.tunnels[0].public_url -replace 'tcp://', ''; Write-Output $url"
-        echo 👤 Username: runneradmin
-        echo 🔑 Password: DucYuz@#2010$!
-        echo =========================================
+        if ($public_url) {
+            $clean_url = $public_url -replace "tcp://", ""
+            Write-Output ""
+            Write-Output "========================================="
+            Write-Output "   🎉 VPS WINDOWS NGROK ĐÃ SẴN SÀNG 🎉   "
+            Write-Output "========================================="
+            Write-Output "📍 Địa chỉ điền vào PC Name: $clean_url"
+            Write-Output "👤 Username: runneradmin"
+            Write-Output "🔑 Password: DucYuz@#2010$!"
+            Write-Output "========================================="
+            Write-Output ""
+            Write-Output "👉 Copy toàn bộ dòng Địa chỉ vứt vào app Remote Desktop!"
+        } else {
+            Write-Output "❌ Không lấy được link. Nội dung log Ngrok:"
+            Get-Content ngrok.log
+        }
 
-    - name: Treo VPS giu ket noi song 6 tieng
+    - name: Treo VPS giữ kết nối sống 6 tiếng
       run: |
         Start-Sleep -s 21600
