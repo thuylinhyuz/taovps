@@ -1,4 +1,4 @@
-name: Windows RDP Ngrok
+name: Windows RDP Pinggy
 
 on:
   workflow_dispatch:
@@ -9,20 +9,6 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: Download ngrok
-        shell: powershell
-        run: |
-          Invoke-WebRequest "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile ngrok.zip
-          Expand-Archive ngrok.zip -DestinationPath ngrok -Force
-          .\ngrok\ngrok.exe version
-
-      - name: Auth ngrok
-        shell: powershell
-        env:
-          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-        run: |
-          .\ngrok\ngrok.exe config add-authtoken $env:NGROK_AUTH_TOKEN
-
       - name: Enable RDP
         shell: powershell
         run: |
@@ -42,33 +28,12 @@ jobs:
           net stop TermService /y
           net start TermService
 
-          Write-Host "=== CHECK USER ==="
-          net user vanducdev
-
-          Write-Host "=== CHECK RDP SERVICE ==="
-          Get-Service TermService
-
           Write-Host "=== CHECK PORT 3389 ==="
           netstat -ano | findstr 3389
 
-      - name: Start ngrok and keep alive
+      - name: Start Pinggy TCP tunnel
         shell: powershell
         run: |
-          Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389"
+          Write-Host "Starting Pinggy TCP tunnel..."
 
-          Start-Sleep -Seconds 20
-
-          $tunnels = Invoke-RestMethod "http://127.0.0.1:4040/api/tunnels"
-          $publicUrl = $tunnels.tunnels[0].public_url
-          $addr = $publicUrl -replace "tcp://",""
-
-          Write-Host "======================================"
-          Write-Host "RDP READY"
-          Write-Host "Computer: $addr"
-          Write-Host "User: vanducdev"
-          Write-Host "Password: Cloud@2026"
-          Write-Host "======================================"
-
-          while ($true) {
-            Start-Sleep -Seconds 60
-          }
+          ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R 0:localhost:3389 tcp@a.pinggy.io
